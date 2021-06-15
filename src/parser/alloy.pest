@@ -1,0 +1,9 @@
+WHITESPACE = { "\t" | " " | "\n"}
+
+digit = { ASCII_DIGIT | "_" }
+digits = { digit+ }
+sign = { "+" | "-" }
+unsigned_integer = @{ digits }
+unsigned_float = @{ digits? ~ "." ~ digits? }
+integer = { sign? ~ unsigned_integer }
+float = { sign? ~ unsigned_float }
