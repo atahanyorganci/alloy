@@ -1,8 +1,16 @@
 use pest::Parser;
 
+use self::value::Value;
+
+pub mod value;
+
 #[derive(Parser)]
 #[grammar = "parser/alloy.pest"]
 pub struct AlloyParser;
+
+pub trait Expression {
+    fn eval(&self) -> Value;
+}
 
 pub fn alloy_integer(integer: &str) -> Result<i32, ()> {
     let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
