@@ -1,7 +1,7 @@
+use super::*;
+use pest::iterators::Pair;
 use std::convert::Into;
 use std::ops::{Add, Div, Mul, Rem, Sub};
-
-use super::Expression;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Value {
@@ -135,15 +135,58 @@ impl Into<i32> for Value {
     }
 }
 
+impl From<f64> for Value {
+    fn from(float: f64) -> Self {
+        Value::Float(float)
+    }
+}
+
+impl From<i32> for Value {
+    fn from(integer: i32) -> Self {
+        Value::Integer(integer)
+    }
+}
+
 impl Expression for Value {
     fn eval(&self) -> Value {
         return *self;
     }
 }
 
+pub fn build_value(value: Pair<Rule>) -> Box<Value> {
+    match value.as_rule() {
+        Rule::integer => {
+            let int = alloy_integer(value.as_str()).unwrap();
+            Box::new(Value::Integer(int))
+        }
+        Rule::float => {
+            let float = alloy_float(value.as_str()).unwrap();
+            Box::from(Value::Float(float))
+        }
+        _ => unreachable!(),
+    }
+}
+
+pub fn alloy_integer(integer: &str) -> Result<i32, ()> {
+    let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
+    match replaced.parse::<i32>() {
+        Ok(int) => Ok(int),
+        Err(_) => Err(()),
+    }
+}
+
+pub fn alloy_float(float: &str) -> Result<f64, ()> {
+    let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
+    match replaced.parse::<f64>() {
+        Ok(float) => Ok(float),
+        Err(_) => Err(()),
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use pest::Parser;
 
     #[test]
     fn value_addtion() {
@@ -187,5 +230,49 @@ mod test {
         assert_ne!(Value::Integer(22), Value::Integer(12));
         assert_ne!(Value::Integer(22), Value::Float(12.0));
         assert_ne!(Value::Float(22.0), Value::Float(12.0));
+    }
+
+    fn test_integer(string: &str, number: i32) {
+        let mut tokens = AlloyParser::parse(Rule::integer, string).unwrap();
+        let pair = tokens.next().unwrap();
+        let integer = build_value(pair);
+        assert_eq!(*integer, number.into());
+    }
+
+    fn test_float(string: &str, number: f64) {
+        let mut tokens = AlloyParser::parse(Rule::float, string).unwrap();
+        let pair = tokens.next().unwrap();
+        let float = build_value(pair);
+        assert_eq!(*float, number.into());
+    }
+
+    #[test]
+    fn parse_integer() {
+        test_integer("10", 10);
+        test_integer("1_000", 1_000);
+        test_integer("1_000_000", 1_000_000);
+        test_integer("- 100", -100);
+        test_integer("- 1_200", -1200);
+        test_integer("-100", -100);
+        test_integer("-1_200", -1200);
+        test_integer("+ 100", 100);
+        test_integer("+ 1_200", 1200);
+        test_integer("+100", 100);
+        test_integer("+1_200", 1200);
+    }
+
+    #[test]
+    fn overflow_test() {
+        assert!(alloy_integer("1_000_000_000_000").is_err());
+    }
+
+    #[test]
+    fn parse_float() {
+        test_float("1.0", 1.0);
+        test_float("-1.2", -1.2);
+        test_float(".2", 0.2);
+        test_float("1.", 1.0);
+        test_float("-1.", -1.0);
+        test_float("-.2", -0.2);
     }
 }
