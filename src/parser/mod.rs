@@ -1,6 +1,7 @@
 use self::value::Value;
 use core::fmt;
 
+pub mod expression;
 pub mod value;
 
 #[derive(Parser)]

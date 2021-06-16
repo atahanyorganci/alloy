@@ -1,4 +1,4 @@
-WHITESPACE = { "\t" | " " | "\n"}
+WHITESPACE = _{ "\t" | " " | "\n"}
 
 digit = { ASCII_DIGIT | "_" }
 digits = { digit+ }
@@ -7,3 +7,16 @@ unsigned_integer = @{ digits }
 unsigned_float = @{ digits? ~ "." ~ digits? }
 integer = { sign? ~ unsigned_integer }
 float = { sign? ~ unsigned_float }
+
+add = { "+" }
+subtract = { "-" }
+multiply = { "*" }
+divide = { "/" }
+power = { "**" }
+binary_op = _{ add | subtract | multiply | divide | power }
+
+number = { float | integer }
+term = _{ number | "(" ~ expression ~ ")" }
+expression = { term ~ (binary_op ~ term)* }
+
+program = _{ SOI ~ expression ~ EOI }
