@@ -9,6 +9,15 @@ pub enum Value {
     Float(f64),
 }
 
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            &Self::Integer(int) => write!(f, "{}", int),
+            &Self::Float(float) => write!(f, "{}", float),
+        }
+    }
+}
+
 impl Add for Value {
     type Output = Value;
 

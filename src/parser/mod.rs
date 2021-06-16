@@ -1,4 +1,5 @@
 use self::value::Value;
+use core::fmt;
 
 pub mod value;
 
@@ -6,6 +7,6 @@ pub mod value;
 #[grammar = "parser/alloy.pest"]
 pub struct AlloyParser;
 
-pub trait Expression {
+pub trait Expression: fmt::Display {
     fn eval(&self) -> Value;
 }
