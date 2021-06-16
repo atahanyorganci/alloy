@@ -43,4 +43,11 @@ binary_op = _{ add
 term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
-program = _{ SOI ~ expression ~ EOI }
+semi = { ";" }
+print_statement = { "print " ~ expression ~ semi}
+if_statement = { "if " ~ expression ~ "{" ~ statements ~ "}" }
+statement = _{ print_statement
+    | if_statement
+}
+statements = { statement* }
+program = _{ SOI ~ statement* ~ EOI }
