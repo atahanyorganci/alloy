@@ -1,4 +1,4 @@
-use alloy::parser::{value::build_value, AlloyParser, Rule};
+use alloy::parser::{expression::build_binary_expression, AlloyParser, Rule};
 use pest::Parser;
 use std::io::{self, Write};
 
@@ -9,12 +9,13 @@ fn main() {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
             Ok(_) => {
-                if input.trim_end() == "exit" {
+                let trimmed = input.trim_end();
+                if trimmed == "exit" {
                     break;
                 }
-                let mut parsed = AlloyParser::parse(Rule::number, input.as_str()).unwrap();
-                let result = build_value(parsed.next().unwrap());
-                println!("{:?}", result);
+                let parsed = AlloyParser::parse(Rule::program, trimmed).unwrap();
+                let result = build_binary_expression(parsed);
+                println!("{} = {}", result, result.eval());
             }
             Err(error) => println!("error: {}", error),
         }
