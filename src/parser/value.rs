@@ -13,9 +13,9 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            &Self::Integer(int) => write!(f, "{}", int),
-            &Self::Float(float) => write!(f, "{}", float),
-            &Self::Bool(bool) => write!(f, "{}", bool),
+            Self::Integer(int) => write!(f, "{}", int),
+            Self::Float(float) => write!(f, "{}", float),
+            Self::Bool(bool) => write!(f, "{}", bool),
         }
     }
 }
@@ -152,37 +152,37 @@ impl Rem for Value {
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        match self {
-            &Self::Float(left) => {
+        match *self {
+            Self::Float(left) => {
                 let right: f64 = (*other).into();
-                (left - right) < f64::EPSILON
+                (left - right).abs() < f64::EPSILON
             }
-            &Self::Integer(int) => match other {
-                &Self::Float(right) => {
+            Self::Integer(int) => match *other {
+                Self::Float(right) => {
                     let left: f64 = int.into();
-                    (left - right) < f64::EPSILON
+                    (left - right).abs() < f64::EPSILON
                 }
                 _ => {
                     let right: i32 = (*other).into();
                     int == right
                 }
             },
-            &Self::Bool(b) => match other {
-                &Self::Float(right) => {
+            Self::Bool(b) => match *other {
+                Self::Float(right) => {
                     if b {
-                        (1.0 - right) < f64::EPSILON
+                        (1.0 - right).abs() < f64::EPSILON
                     } else {
                         right < f64::EPSILON
                     }
                 }
-                &Self::Integer(right) => {
+                Self::Integer(right) => {
                     if b {
                         right == 1
                     } else {
                         right == 0
                     }
                 }
-                &Self::Bool(right) => b == right,
+                Self::Bool(right) => b == right,
             },
         }
     }
@@ -216,12 +216,12 @@ impl PartialOrd for Value {
     }
 }
 
-impl Into<f64> for Value {
-    fn into(self) -> f64 {
-        match self {
-            Self::Float(float) => float,
-            Self::Integer(int) => int.into(),
-            Self::Bool(b) => {
+impl From<Value> for f64 {
+    fn from(val: Value) -> Self {
+        match val {
+            Value::Float(float) => float,
+            Value::Integer(int) => int.into(),
+            Value::Bool(b) => {
                 if b {
                     1.0
                 } else {
@@ -232,12 +232,12 @@ impl Into<f64> for Value {
     }
 }
 
-impl Into<i32> for Value {
-    fn into(self) -> i32 {
-        match self {
-            Self::Float(float) => float.floor() as i32,
-            Self::Integer(int) => int,
-            Self::Bool(b) => {
+impl From<Value> for i32 {
+    fn from(val: Value) -> Self {
+        match val {
+            Value::Float(float) => float.floor() as i32,
+            Value::Integer(int) => int,
+            Value::Bool(b) => {
                 if b {
                     1
                 } else {
@@ -248,9 +248,9 @@ impl Into<i32> for Value {
     }
 }
 
-impl Into<bool> for Value {
-    fn into(self) -> bool {
-        match self {
+impl From<Value> for bool {
+    fn from(val: Value) -> Self {
+        match val {
             Value::Integer(int) => int != 0,
             Value::Float(float) => float != 0.0,
             Value::Bool(b) => b,
@@ -278,7 +278,7 @@ impl From<bool> for Value {
 
 impl Expression for Value {
     fn eval(&self) -> Value {
-        return *self;
+        *self
     }
 }
 

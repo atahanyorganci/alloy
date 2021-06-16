@@ -26,9 +26,7 @@ impl Statement for IfStatement {
         let condition = self.condition.eval();
         if condition.into() {
             let statements: &Vec<_> = self.statements.borrow();
-            statements
-                .into_iter()
-                .for_each(|statement| statement.eval());
+            statements.iter().for_each(|statement| statement.eval());
         }
     }
 }
