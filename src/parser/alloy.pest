@@ -7,16 +7,40 @@ unsigned_integer = @{ digits }
 unsigned_float = @{ digits? ~ "." ~ digits? }
 integer = { sign? ~ unsigned_integer }
 float = { sign? ~ unsigned_float }
+boolean = { "true" | "false" }
+value = { float | integer | boolean }
 
 add = { "+" }
 subtract = { "-" }
 multiply = { "*" }
 divide = { "/" }
 power = { "**" }
-binary_op = _{ add | subtract | multiply | divide | power }
+less_than = { "<"}
+less_than_eq = { "<="}
+greater_than = { ">"}
+greater_than_eq = { ">="}
+equal_to = { "==" }
+not_equal_to = { "!=" }
+logical_and = { "and" | "&&" }
+logical_or = { "or" | "||" }
+logical_xor = { "xor" }
+binary_op = _{ add
+    | subtract
+    | multiply
+    | divide
+    | power
+    | less_than
+    | less_than_eq
+    | greater_than
+    | greater_than_eq
+    | equal_to
+    | not_equal_to
+    | logical_and
+    | logical_or
+    | logical_xor
+}
 
-number = { float | integer }
-term = _{ number | "(" ~ expression ~ ")" }
+term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
 program = _{ SOI ~ expression ~ EOI }

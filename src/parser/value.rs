@@ -7,6 +7,7 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 pub enum Value {
     Integer(i32),
     Float(f64),
+    Bool(bool),
 }
 
 impl fmt::Display for Value {
@@ -14,6 +15,7 @@ impl fmt::Display for Value {
         match self {
             &Self::Integer(int) => write!(f, "{}", int),
             &Self::Float(float) => write!(f, "{}", float),
+            &Self::Bool(bool) => write!(f, "{}", bool),
         }
     }
 }
@@ -32,8 +34,18 @@ impl Add for Value {
                     let left: f64 = int.into();
                     Value::Float(left + right)
                 }
-                Self::Integer(right) => Self::Integer(int + right),
+                _ => {
+                    let right: i32 = rhs.into();
+                    Value::Integer(int + right)
+                }
             },
+            Self::Bool(b) => {
+                if b {
+                    Value::Integer(1) + rhs
+                } else {
+                    rhs
+                }
+            }
         }
     }
 }
@@ -52,8 +64,18 @@ impl Sub for Value {
                     let left: f64 = int.into();
                     Value::Float(left - right)
                 }
-                Self::Integer(right) => Self::Integer(int - right),
+                _ => {
+                    let right: i32 = rhs.into();
+                    Value::Integer(int - right)
+                }
             },
+            Self::Bool(b) => {
+                if b {
+                    Value::Integer(1) - rhs
+                } else {
+                    rhs
+                }
+            }
         }
     }
 }
@@ -72,8 +94,18 @@ impl Mul for Value {
                     let left: f64 = int.into();
                     Value::Float(left * right)
                 }
-                Self::Integer(right) => Self::Integer(int * right),
+                _ => {
+                    let right: i32 = rhs.into();
+                    Value::Integer(int * right)
+                }
             },
+            Self::Bool(b) => {
+                if b {
+                    rhs
+                } else {
+                    Value::Integer(0)
+                }
+            }
         }
     }
 }
@@ -102,8 +134,18 @@ impl Rem for Value {
                     let left: f64 = int.into();
                     Value::Float(left % right)
                 }
-                Self::Integer(right) => Self::Integer(int % right),
+                _ => {
+                    let right: i32 = rhs.into();
+                    Value::Integer(int % right)
+                }
             },
+            Self::Bool(b) => {
+                if b {
+                    Value::Integer(1) % rhs
+                } else {
+                    rhs
+                }
+            }
         }
     }
 }
@@ -111,17 +153,65 @@ impl Rem for Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match self {
-            Self::Float(left) => {
+            &Self::Float(left) => {
                 let right: f64 = (*other).into();
                 (left - right) < f64::EPSILON
             }
-            Self::Integer(int) => match other {
-                Self::Float(right) => {
-                    let left: f64 = (*int).into();
+            &Self::Integer(int) => match other {
+                &Self::Float(right) => {
+                    let left: f64 = int.into();
                     (left - right) < f64::EPSILON
                 }
-                Self::Integer(right) => int == right,
+                _ => {
+                    let right: i32 = (*other).into();
+                    int == right
+                }
             },
+            &Self::Bool(b) => match other {
+                &Self::Float(right) => {
+                    if b {
+                        (1.0 - right) < f64::EPSILON
+                    } else {
+                        right < f64::EPSILON
+                    }
+                }
+                &Self::Integer(right) => {
+                    if b {
+                        right == 1
+                    } else {
+                        right == 0
+                    }
+                }
+                &Self::Bool(right) => b == right,
+            },
+        }
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self {
+            Self::Float(left) => {
+                let right: f64 = (*other).into();
+                left.partial_cmp(&right)
+            }
+            &Self::Integer(int) => match other {
+                Self::Float(right) => {
+                    let left: f64 = int.into();
+                    left.partial_cmp(right)
+                }
+                _ => {
+                    let right = (*other).into();
+                    int.partial_cmp(&right)
+                }
+            },
+            &Self::Bool(b) => {
+                if b {
+                    Value::Integer(1).partial_cmp(other)
+                } else {
+                    Value::Integer(0).partial_cmp(other)
+                }
+            }
         }
     }
 }
@@ -131,6 +221,13 @@ impl Into<f64> for Value {
         match self {
             Self::Float(float) => float,
             Self::Integer(int) => int.into(),
+            Self::Bool(b) => {
+                if b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
         }
     }
 }
@@ -140,6 +237,23 @@ impl Into<i32> for Value {
         match self {
             Self::Float(float) => float.floor() as i32,
             Self::Integer(int) => int,
+            Self::Bool(b) => {
+                if b {
+                    1
+                } else {
+                    0
+                }
+            }
+        }
+    }
+}
+
+impl Into<bool> for Value {
+    fn into(self) -> bool {
+        match self {
+            Value::Integer(int) => int != 0,
+            Value::Float(float) => float != 0.0,
+            Value::Bool(b) => b,
         }
     }
 }
@@ -156,9 +270,35 @@ impl From<i32> for Value {
     }
 }
 
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
+}
+
 impl Expression for Value {
     fn eval(&self) -> Value {
         return *self;
+    }
+}
+
+impl Value {
+    pub fn and(self, rhs: Self) -> Self {
+        let left = self.into();
+        let right = rhs.into();
+        Value::Bool(left && right)
+    }
+
+    pub fn or(self, rhs: Self) -> Self {
+        let left = self.into();
+        let right = rhs.into();
+        Value::Bool(left && right)
+    }
+
+    pub fn xor(self, rhs: Self) -> Self {
+        let left: bool = self.into();
+        let right: bool = rhs.into();
+        Value::Bool(left != right)
     }
 }
 
@@ -171,6 +311,16 @@ pub fn build_value(value: Pair<Rule>) -> Box<Value> {
         Rule::float => {
             let float = alloy_float(value.as_str()).unwrap();
             Box::from(Value::Float(float))
+        }
+        Rule::boolean => {
+            let s = value.as_str();
+            if s == "true" {
+                Box::from(Value::Bool(true))
+            } else if s == "false" {
+                Box::from(Value::Bool(false))
+            } else {
+                unreachable!()
+            }
         }
         _ => unreachable!(),
     }
@@ -205,10 +355,40 @@ mod test {
     }
 
     #[test]
+    fn addition_with_bool() {
+        let five_float = Value::Float(5.0);
+        let five_int = Value::Integer(5);
+        let six_float = Value::Float(6.0);
+        let six_int = Value::Integer(6);
+        let one = Value::Bool(true);
+        let zero = Value::Bool(false);
+
+        assert_eq!(five_float + one, six_float);
+        assert_eq!(five_float + zero, five_float);
+        assert_eq!(five_int + one, six_int);
+        assert_eq!(five_int + zero, five_int);
+    }
+
+    #[test]
     fn value_subtarction() {
         assert_eq!(Value::Float(12.0) - Value::Float(12.0), Value::Float(0.0));
         assert_eq!(Value::Float(12.0) - Value::Integer(12), Value::Float(0.0));
         assert_eq!(Value::Integer(12) - Value::Integer(12), Value::Integer(0));
+    }
+
+    #[test]
+    fn subtraction_with_bool() {
+        let five_float = Value::Float(5.0);
+        let five_int = Value::Integer(5);
+        let four_float = Value::Float(4.0);
+        let four_int = Value::Integer(4);
+        let one = Value::Bool(true);
+        let zero = Value::Bool(false);
+
+        assert_eq!(five_float - one, four_float);
+        assert_eq!(five_float - zero, five_float);
+        assert_eq!(five_int - one, four_int);
+        assert_eq!(five_int - zero, five_int);
     }
 
     #[test]
@@ -219,8 +399,24 @@ mod test {
     }
 
     #[test]
+    fn multiplaction_with_bool() {
+        let five_float = Value::Float(5.0);
+        let five_int = Value::Integer(5);
+        let zero_float = Value::Float(0.0);
+        let zero_int = Value::Integer(0);
+        let one = Value::Bool(true);
+        let zero = Value::Bool(false);
+
+        assert_eq!(five_float * one, five_float);
+        assert_eq!(five_float * zero, zero_float);
+        assert_eq!(five_int * one, five_float);
+        assert_eq!(five_int * zero, zero_int);
+    }
+
+    #[test]
     fn value_division() {
         assert_eq!(Value::Float(12.0) / Value::Float(12.0), Value::Float(1.0));
+        assert_eq!(Value::Float(12.0) / Value::Bool(true), Value::Float(12.0));
         assert_eq!(Value::Float(12.0) / Value::Integer(12), Value::Float(1.0));
         assert_eq!(Value::Integer(12) / Value::Integer(12), Value::Float(1.0));
     }
@@ -229,6 +425,8 @@ mod test {
     fn value_remainder() {
         assert_eq!(Value::Float(12.0) % Value::Integer(3), Value::Float(0.0));
         assert_eq!(Value::Integer(12) % Value::Integer(3), Value::Integer(0));
+        assert_eq!(Value::Float(12.0) % Value::Bool(true), Value::Float(0.0));
+        assert_eq!(Value::Integer(12) % Value::Bool(true), Value::Integer(0));
     }
 
     #[test]
