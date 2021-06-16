@@ -1,4 +1,4 @@
-use alloy::parser::{expression::build_binary_expression, AlloyParser, Rule};
+use alloy::parser::{statement::build_statements, AlloyParser, Rule};
 use pest::Parser;
 use std::io::{self, Write};
 
@@ -13,9 +13,11 @@ fn main() {
                 if trimmed == "exit" {
                     break;
                 }
-                let parsed = AlloyParser::parse(Rule::program, trimmed).unwrap();
-                let result = build_binary_expression(parsed);
-                println!("{} = {}", result, result.eval());
+                let mut parsed = AlloyParser::parse(Rule::program, trimmed).unwrap();
+                let statements = build_statements(&mut parsed);
+                for statement in statements {
+                    statement.eval();
+                }
             }
             Err(error) => println!("error: {}", error),
         }
