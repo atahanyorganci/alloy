@@ -63,10 +63,13 @@ semi = { ";" }
 // Print Statement
 print_statement = { k_print ~ expression ~ semi}
 
+// Block Statement
+scoped_statements = _{ "{" ~ statements ~ "}" }
+
 // If Statement
-if_body = { k_if ~ expression ~ "{" ~ statements ~ "}" }
-else_if_body = { k_else ~ k_if ~ expression ~ "{" ~ statements ~ "}" }
-else_body = { k_else ~ "{" ~ statements ~ "}" }
+if_body = { k_if ~ expression ~ scoped_statements }
+else_if_body = { k_else ~ k_if ~ expression ~ scoped_statements }
+else_body = { k_else ~ scoped_statements }
 if_statement = { if_body ~ else_if_body* ~ else_body? }
 
 statement = _{ print_statement
