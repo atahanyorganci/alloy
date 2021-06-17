@@ -56,9 +56,19 @@ term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
 identifier = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+
+// Statements
 semi = { ";" }
+
+// Print Statement
 print_statement = { k_print ~ expression ~ semi}
-if_statement = { k_if ~ expression ~ "{" ~ statements ~ "}" }
+
+// If Statement
+if_body = { k_if ~ expression ~ "{" ~ statements ~ "}" }
+else_if_body = { k_else ~ k_if ~ expression ~ "{" ~ statements ~ "}" }
+else_body = { k_else ~ "{" ~ statements ~ "}" }
+if_statement = { if_body ~ else_if_body* ~ else_body? }
+
 statement = _{ print_statement
     | if_statement
 }
