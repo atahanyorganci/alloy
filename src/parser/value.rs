@@ -282,6 +282,40 @@ impl Expression for Value {
     }
 }
 
+impl ASTNode for Value {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let value = match pair.as_rule() {
+            Rule::value => pair.into_inner().next().unwrap(),
+            _ => return None,
+        };
+        let result = match value.as_rule() {
+            Rule::integer => {
+                let int = alloy_integer(value.as_str()).unwrap();
+                Box::new(Value::Integer(int))
+            }
+            Rule::float => {
+                let float = alloy_float(value.as_str()).unwrap();
+                Box::from(Value::Float(float))
+            }
+            Rule::boolean => {
+                let s = value.as_str();
+                if s == "true" {
+                    Box::from(Value::Bool(true))
+                } else if s == "false" {
+                    Box::from(Value::Bool(false))
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => unreachable!(),
+        };
+        Some(result)
+    }
+}
+
 impl Value {
     pub fn and(self, rhs: Self) -> Self {
         let left = self.into();
@@ -299,30 +333,6 @@ impl Value {
         let left: bool = self.into();
         let right: bool = rhs.into();
         Value::Bool(left != right)
-    }
-}
-
-pub fn build_value(value: Pair<Rule>) -> Box<Value> {
-    match value.as_rule() {
-        Rule::integer => {
-            let int = alloy_integer(value.as_str()).unwrap();
-            Box::new(Value::Integer(int))
-        }
-        Rule::float => {
-            let float = alloy_float(value.as_str()).unwrap();
-            Box::from(Value::Float(float))
-        }
-        Rule::boolean => {
-            let s = value.as_str();
-            if s == "true" {
-                Box::from(Value::Bool(true))
-            } else if s == "false" {
-                Box::from(Value::Bool(false))
-            } else {
-                unreachable!()
-            }
-        }
-        _ => unreachable!(),
     }
 }
 
@@ -440,16 +450,16 @@ mod test {
     }
 
     fn test_integer(string: &str, number: i32) {
-        let mut tokens = AlloyParser::parse(Rule::integer, string).unwrap();
+        let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
         let pair = tokens.next().unwrap();
-        let integer = build_value(pair);
+        let integer = Value::build(pair).unwrap();
         assert_eq!(*integer, number.into());
     }
 
     fn test_float(string: &str, number: f64) {
-        let mut tokens = AlloyParser::parse(Rule::float, string).unwrap();
+        let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
         let pair = tokens.next().unwrap();
-        let float = build_value(pair);
+        let float = Value::build(pair).unwrap();
         assert_eq!(*float, number.into());
     }
 

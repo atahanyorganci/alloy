@@ -1,9 +1,12 @@
+use std::fmt;
+
 use pest::iterators::Pair;
 
 use crate::parser::{
-    expression::build_binary_expression, statement::build_statements, Expression, Rule, Statement,
+    expression::build_expression, statement::build_statements, ASTNode, Expression, Rule, Statement,
 };
 
+#[derive(Debug)]
 pub struct ForStatement {
     identifier: String,
     iterator: Box<dyn Expression>,
@@ -14,9 +17,17 @@ impl Statement for ForStatement {
     fn eval(&self) {
         todo!()
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+impl ASTNode for ForStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::for_statement => pair.into_inner(),
+            _ => return None,
+        };
 
         let k_for = inner.next().unwrap().as_rule();
         debug_assert_eq!(k_for, Rule::k_for);
@@ -31,16 +42,22 @@ impl Statement for ForStatement {
         debug_assert_eq!(k_in, Rule::k_in);
 
         let expression = inner.next().unwrap();
-        let iterator = build_binary_expression(expression.into_inner());
+        let iterator = build_expression(expression).unwrap();
 
         let mut statement_pairs = inner.next().unwrap().into_inner();
         let body = build_statements(&mut statement_pairs);
 
-        Box::from(ForStatement {
+        Some(Box::from(ForStatement {
             identifier,
             iterator,
             body,
-        })
+        }))
+    }
+}
+
+impl fmt::Display for ForStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
 
@@ -48,7 +65,7 @@ impl Statement for ForStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{AlloyParser, Rule, Statement};
+    use crate::parser::{ASTNode, AlloyParser, Rule};
 
     use super::ForStatement;
 
@@ -61,7 +78,7 @@ mod test {
 
     fn build_for_statement(input: &str) -> Box<ForStatement> {
         let pair = statement_pair(input).unwrap();
-        ForStatement::build(pair)
+        ForStatement::build(pair).unwrap()
     }
 
     #[test]

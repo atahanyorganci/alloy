@@ -1,11 +1,10 @@
-use pest::{
-    iterators::{Pair, Pairs},
-    prec_climber::*,
-};
+use std::fmt;
 
-use crate::parser::value::build_value;
+use pest::{iterators::Pair, prec_climber::*};
 
-use super::*;
+use crate::parser::value::Value;
+
+use super::{ASTNode, Expression, Rule};
 
 lazy_static! {
     static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
@@ -40,6 +39,12 @@ impl fmt::Display for BinaryExpression {
     }
 }
 
+impl fmt::Debug for BinaryExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self)
+    }
+}
+
 impl Expression for BinaryExpression {
     fn eval(&self) -> super::Value {
         let left = self.left.eval();
@@ -64,55 +69,31 @@ impl Expression for BinaryExpression {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum BinaryOperator {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Reminder,
-    Power,
-    LessThan,
-    LessThanEqual,
-    GreaterThan,
-    GreaterThanEqual,
-    Equal,
-    NotEqual,
-    LogicalAnd,
-    LogicalOr,
-    LogicalXor,
-}
-
-impl fmt::Display for BinaryOperator {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            &BinaryOperator::Add => write!(f, "+"),
-            &BinaryOperator::Subtract => write!(f, "-"),
-            &BinaryOperator::Multiply => write!(f, "*"),
-            &BinaryOperator::Divide => write!(f, "/"),
-            &BinaryOperator::Reminder => write!(f, "%"),
-            &BinaryOperator::Power => write!(f, "**"),
-            BinaryOperator::LessThan => write!(f, "<"),
-            BinaryOperator::LessThanEqual => write!(f, "<="),
-            BinaryOperator::GreaterThan => write!(f, ">"),
-            BinaryOperator::GreaterThanEqual => write!(f, ">="),
-            BinaryOperator::Equal => write!(f, "=="),
-            BinaryOperator::NotEqual => write!(f, "!="),
-            BinaryOperator::LogicalAnd => write!(f, "and"),
-            BinaryOperator::LogicalOr => write!(f, "or"),
-            BinaryOperator::LogicalXor => write!(f, "xor"),
-        }
+impl ASTNode for BinaryExpression {
+    fn build(pair: Pair<super::Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let _expression = match pair.as_rule() {
+            Rule::expression => pair.into_inner(),
+            _ => return None,
+        };
+        todo!()
     }
 }
 
-pub fn build_binary_expression(expression: Pairs<Rule>) -> Box<dyn Expression> {
+pub(crate) fn build_binary_expression(pair: Pair<Rule>) -> Box<dyn Expression> {
+    let expression = match pair.as_rule() {
+        Rule::expression => pair.into_inner(),
+        _ => unreachable!(),
+    };
     PREC_CLIMBER.climb(
         expression,
         |pair: Pair<Rule>| -> Box<dyn Expression> {
             match pair.as_rule() {
-                Rule::value => build_value(pair.into_inner().next().unwrap()),
-                Rule::expression => build_binary_expression(pair.into_inner()),
-                _ => panic!("SHOULD NOT PARSE {}", pair),
+                Rule::value => Value::build(pair).unwrap(),
+                Rule::expression => build_binary_expression(pair),
+                _ => unreachable!(),
             }
         },
         |left: Box<dyn Expression>,
@@ -143,6 +124,54 @@ pub fn build_binary_expression(expression: Pairs<Rule>) -> Box<dyn Expression> {
             })
         },
     )
+}
+
+pub fn build_expression(pair: Pair<Rule>) -> Option<Box<dyn Expression>> {
+    match pair.as_rule() {
+        Rule::expression => Some(build_binary_expression(pair)),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Reminder,
+    Power,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual,
+    Equal,
+    NotEqual,
+    LogicalAnd,
+    LogicalOr,
+    LogicalXor,
+}
+
+impl fmt::Display for BinaryOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BinaryOperator::Add => write!(f, "+"),
+            BinaryOperator::Subtract => write!(f, "-"),
+            BinaryOperator::Multiply => write!(f, "*"),
+            BinaryOperator::Divide => write!(f, "/"),
+            BinaryOperator::Reminder => write!(f, "%"),
+            BinaryOperator::Power => write!(f, "**"),
+            BinaryOperator::LessThan => write!(f, "<"),
+            BinaryOperator::LessThanEqual => write!(f, "<="),
+            BinaryOperator::GreaterThan => write!(f, ">"),
+            BinaryOperator::GreaterThanEqual => write!(f, ">="),
+            BinaryOperator::Equal => write!(f, "=="),
+            BinaryOperator::NotEqual => write!(f, "!="),
+            BinaryOperator::LogicalAnd => write!(f, "and"),
+            BinaryOperator::LogicalOr => write!(f, "or"),
+            BinaryOperator::LogicalXor => write!(f, "xor"),
+        }
+    }
 }
 
 #[cfg(test)]

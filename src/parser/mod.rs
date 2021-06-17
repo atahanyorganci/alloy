@@ -12,13 +12,16 @@ pub mod value;
 #[grammar = "parser/alloy.pest"]
 pub struct AlloyParser;
 
-pub trait Expression: fmt::Display {
+pub trait Expression: ASTNode {
     fn eval(&self) -> Value;
 }
 
-pub trait Statement {
+pub trait Statement: ASTNode {
     fn eval(&self);
-    fn build(pair: Pair<Rule>) -> Box<Self>
+}
+
+pub trait ASTNode: fmt::Debug + fmt::Display {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
     where
         Self: Sized;
 }

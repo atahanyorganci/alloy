@@ -1,42 +1,61 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, fmt};
 
-use crate::parser::statement::{
-    declare_assign_statement::{AssignmentStatement, DeclarationStatement},
-    for_statement::ForStatement,
-    if_statement::IfStatement,
-    while_statement::WhileStatement,
+use pest::iterators::{Pair, Pairs};
+
+use crate::parser::{
+    expression::build_expression,
+    statement::{
+        declare_assign_statement::{AssignmentStatement, DeclarationStatement},
+        for_statement::ForStatement,
+        if_statement::IfStatement,
+        while_statement::WhileStatement,
+    },
 };
 
-use super::{expression::build_binary_expression, Expression, Rule, Statement};
-use pest::iterators::{Pair, Pairs};
+use super::{ASTNode, Expression, Rule, Statement};
 
 pub mod declare_assign_statement;
 pub mod for_statement;
 pub mod if_statement;
 pub mod while_statement;
 
+#[derive(Debug)]
 pub struct PrintStatement {
-    expr: Box<dyn Expression>,
+    expression: Box<dyn Expression>,
 }
 
 impl Statement for PrintStatement {
     fn eval(&self) {
-        let val = self.expr.eval();
+        let val = self.expression.eval();
         println!("{}", val);
-    }
-
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
-
-        let k_print = inner.next().unwrap().as_rule();
-        debug_assert_eq!(k_print, Rule::k_print);
-
-        Box::from(PrintStatement {
-            expr: build_binary_expression(inner),
-        })
     }
 }
 
+impl ASTNode for PrintStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::print_statement => pair.into_inner(),
+            _ => return None,
+        };
+        let k_print = inner.next().unwrap().as_rule();
+        debug_assert_eq!(k_print, Rule::k_print);
+
+        let expression_pair = inner.next().unwrap();
+        let expression = build_expression(expression_pair).unwrap();
+        Some(Box::from(PrintStatement { expression }))
+    }
+}
+
+impl fmt::Display for PrintStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 pub struct BlockStatement {
     body: Vec<Box<dyn Statement>>,
 }
@@ -46,65 +65,97 @@ impl Statement for BlockStatement {
         let statements: &Vec<_> = self.body.borrow();
         statements.iter().for_each(|statement| statement.eval());
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self>
+impl ASTNode for BlockStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
     where
         Self: Sized,
     {
-        let mut inner = pair.into_inner();
+        let mut inner = match pair.as_rule() {
+            Rule::block_statement => pair.into_inner(),
+            _ => return None,
+        };
         let statements = inner.next().unwrap();
-        match statements.as_rule() {
-            Rule::statements => {}
+        let body = match statements.as_rule() {
+            Rule::statements => build_statements(&mut statements.into_inner()),
             _ => unreachable!(),
-        }
-        Box::from(BlockStatement {
-            body: build_statements(&mut statements.into_inner()),
-        })
+        };
+        Some(Box::from(BlockStatement { body }))
     }
 }
 
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 pub struct BreakStatement;
 
 impl Statement for BreakStatement {
     fn eval(&self) {
         todo!()
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
-        match inner.next().unwrap().as_rule() {
-            Rule::k_break => Box::from(BreakStatement {}),
-            _ => unreachable!(),
+impl ASTNode for BreakStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        match pair.as_rule() {
+            Rule::break_statement => Some(Box::from(Self {})),
+            _ => None,
         }
     }
 }
+
+impl fmt::Display for BreakStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BreakStatement")
+    }
+}
+
+#[derive(Debug)]
 pub struct ContinueStatement;
 
 impl Statement for ContinueStatement {
     fn eval(&self) {
         todo!()
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
-        match inner.next().unwrap().as_rule() {
-            Rule::k_continue => Box::from(ContinueStatement {}),
-            _ => unreachable!(),
+impl ASTNode for ContinueStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        match pair.as_rule() {
+            Rule::continue_statement => Some(Box::from(ContinueStatement {})),
+            _ => return None,
         }
+    }
+}
+
+impl fmt::Display for ContinueStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "continue;")
     }
 }
 
 pub fn build_statement(pair: Pair<Rule>) -> Box<dyn Statement> {
     match pair.as_rule() {
-        Rule::print_statement => PrintStatement::build(pair),
-        Rule::if_statement => IfStatement::build(pair),
-        Rule::declaration_statement => DeclarationStatement::build(pair),
-        Rule::assignment_statement => AssignmentStatement::build(pair),
-        Rule::while_statement => WhileStatement::build(pair),
-        Rule::for_statement => ForStatement::build(pair),
-        Rule::block_statement => BlockStatement::build(pair),
-        Rule::continue_statement => ContinueStatement::build(pair),
-        Rule::break_statement => BreakStatement::build(pair),
+        Rule::print_statement => PrintStatement::build(pair).unwrap(),
+        Rule::if_statement => IfStatement::build(pair).unwrap(),
+        Rule::declaration_statement => DeclarationStatement::build(pair).unwrap(),
+        Rule::assignment_statement => AssignmentStatement::build(pair).unwrap(),
+        Rule::while_statement => WhileStatement::build(pair).unwrap(),
+        Rule::for_statement => ForStatement::build(pair).unwrap(),
+        Rule::block_statement => BlockStatement::build(pair).unwrap(),
+        Rule::continue_statement => ContinueStatement::build(pair).unwrap(),
+        Rule::break_statement => BreakStatement::build(pair).unwrap(),
         _ => panic!("{}", pair),
     }
 }
@@ -114,10 +165,7 @@ pub fn build_statements(pairs: &mut Pairs<Rule>) -> Vec<Box<dyn Statement>> {
     for pair in pairs {
         match pair.as_rule() {
             Rule::EOI => break,
-            _ => {
-                dbg!("{}", &pair);
-                statements.push(build_statement(pair))
-            }
+            _ => statements.push(build_statement(pair)),
         }
     }
     statements
@@ -127,7 +175,7 @@ pub fn build_statements(pairs: &mut Pairs<Rule>) -> Vec<Box<dyn Statement>> {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{AlloyParser, Rule, Statement};
+    use crate::parser::{ASTNode, AlloyParser, Rule};
 
     use super::{BlockStatement, PrintStatement};
 
@@ -140,7 +188,7 @@ mod test {
 
     fn build_print_statement(input: &str) -> Box<PrintStatement> {
         let pair = statement_pair(input).unwrap();
-        PrintStatement::build(pair)
+        PrintStatement::build(pair).unwrap()
     }
 
     #[test]
@@ -161,7 +209,7 @@ mod test {
 
     fn build_block_statement(input: &str) -> Box<BlockStatement> {
         let pair = statement_pair(input).unwrap();
-        BlockStatement::build(pair)
+        BlockStatement::build(pair).unwrap()
     }
 
     #[test]

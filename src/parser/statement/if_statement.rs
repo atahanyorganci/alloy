@@ -1,11 +1,12 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, fmt};
 
 use pest::iterators::Pair;
 
 use crate::parser::{
-    expression::build_binary_expression, statement::build_statements, Expression, Rule, Statement,
+    expression::build_expression, statement::build_statements, ASTNode, Expression, Rule, Statement,
 };
 
+#[derive(Debug)]
 pub struct IfStatement {
     condition: Box<dyn Expression>,
     statements: Vec<Box<dyn Statement>>,
@@ -32,9 +33,14 @@ impl Statement for IfStatement {
             }
         }
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+impl ASTNode for IfStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>> {
+        let mut inner = match pair.as_rule() {
+            Rule::if_statement => pair.into_inner(),
+            _ => return None,
+        };
 
         // If body
         let mut if_body = inner.next().unwrap().into_inner();
@@ -42,7 +48,7 @@ impl Statement for IfStatement {
         debug_assert_eq!(k_if, Rule::k_if);
 
         let expression = if_body.next().unwrap();
-        let condition = build_binary_expression(expression.into_inner());
+        let condition = build_expression(expression).unwrap();
 
         let mut statement_pairs = if_body.next().unwrap().into_inner();
         let statements = build_statements(&mut statement_pairs);
@@ -53,21 +59,30 @@ impl Statement for IfStatement {
         // ElseIfs or Else
         for else_pair in inner.into_iter() {
             match else_pair.as_rule() {
-                Rule::else_if_body => else_if_statements.push(*ElseIfStatement::build(else_pair)),
-                Rule::else_body => else_statement = Some(*ElseStatement::build(else_pair)),
+                Rule::else_if_body => {
+                    else_if_statements.push(*ElseIfStatement::build(else_pair).unwrap())
+                }
+                Rule::else_body => else_statement = Some(*ElseStatement::build(else_pair).unwrap()),
                 _ => unreachable!(),
             }
         }
 
-        Box::from(IfStatement {
+        Some(Box::from(IfStatement {
             condition,
             statements,
             else_if_statements,
             else_statement,
-        })
+        }))
     }
 }
 
+impl fmt::Display for IfStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 pub struct ElseIfStatement {
     condition: Box<dyn Expression>,
     statements: Vec<Box<dyn Statement>>,
@@ -77,9 +92,17 @@ impl Statement for ElseIfStatement {
     fn eval(&self) {
         self.do_eval();
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+impl ASTNode for ElseIfStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::else_if_body => pair.into_inner(),
+            _ => return None,
+        };
 
         let k_else = inner.next().unwrap().as_rule();
         debug_assert_eq!(k_else, Rule::k_else);
@@ -88,15 +111,21 @@ impl Statement for ElseIfStatement {
         debug_assert_eq!(k_if, Rule::k_if);
 
         let expression = inner.next().unwrap();
-        let condition = build_binary_expression(expression.into_inner());
+        let condition = build_expression(expression).unwrap();
 
         let mut statement_pairs = inner.next().unwrap().into_inner();
         let statements = build_statements(&mut statement_pairs);
 
-        Box::from(ElseIfStatement {
+        Some(Box::from(ElseIfStatement {
             condition,
             statements,
-        })
+        }))
+    }
+}
+
+impl fmt::Display for ElseIfStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
 
@@ -111,6 +140,7 @@ impl ElseIfStatement {
     }
 }
 
+#[derive(Debug)]
 pub struct ElseStatement {
     statements: Vec<Box<dyn Statement>>,
 }
@@ -120,9 +150,16 @@ impl Statement for ElseStatement {
         let statements: &Vec<_> = self.statements.borrow();
         statements.iter().for_each(|statement| statement.eval());
     }
-
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+}
+impl ASTNode for ElseStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::else_body => pair.into_inner(),
+            _ => return None,
+        };
 
         let k_else = inner.next().unwrap().as_rule();
         debug_assert_eq!(k_else, Rule::k_else);
@@ -130,7 +167,13 @@ impl Statement for ElseStatement {
         let mut statement_pairs = inner.next().unwrap().into_inner();
         let statements = build_statements(&mut statement_pairs);
 
-        Box::from(ElseStatement { statements })
+        Some(Box::from(ElseStatement { statements }))
+    }
+}
+
+impl fmt::Display for ElseStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
 
@@ -138,7 +181,7 @@ impl Statement for ElseStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{AlloyParser, Rule, Statement};
+    use crate::parser::{ASTNode, AlloyParser, Rule};
 
     use super::IfStatement;
 
@@ -151,7 +194,7 @@ mod test {
 
     fn build_if_statement(input: &str) -> Box<IfStatement> {
         let pair = statement_pair(input).unwrap();
-        IfStatement::build(pair)
+        IfStatement::build(pair).unwrap()
     }
 
     #[test]

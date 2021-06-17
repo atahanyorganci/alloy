@@ -1,9 +1,12 @@
+use std::fmt;
+
 use pest::iterators::Pair;
 
 use crate::parser::{
-    expression::build_binary_expression, statement::build_statements, Expression, Rule, Statement,
+    expression::build_expression, statement::build_statements, ASTNode, Expression, Rule, Statement,
 };
 
+#[derive(Debug)]
 pub struct WhileStatement {
     condition: Box<dyn Expression>,
     body: Vec<Box<dyn Statement>>,
@@ -13,20 +16,34 @@ impl Statement for WhileStatement {
     fn eval(&self) {
         todo!()
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+impl ASTNode for WhileStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::while_statement => pair.into_inner(),
+            _ => return None,
+        };
 
         let k_while = inner.next().unwrap().as_rule();
         debug_assert_eq!(k_while, Rule::k_while);
 
         let expression = inner.next().unwrap();
-        let condition = build_binary_expression(expression.into_inner());
+        let condition = build_expression(expression).unwrap();
 
         let mut statement_pairs = inner.next().unwrap().into_inner();
         let body = build_statements(&mut statement_pairs);
 
-        Box::from(WhileStatement { condition, body })
+        Some(Box::from(WhileStatement { condition, body }))
+    }
+}
+
+impl fmt::Display for WhileStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
 
@@ -34,7 +51,7 @@ impl Statement for WhileStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{AlloyParser, Rule, Statement};
+    use crate::parser::{ASTNode, AlloyParser, Rule};
 
     use super::WhileStatement;
 
@@ -47,7 +64,7 @@ mod test {
 
     fn build_while_statement(input: &str) -> Box<WhileStatement> {
         let pair = statement_pair(input).unwrap();
-        WhileStatement::build(pair)
+        WhileStatement::build(pair).unwrap()
     }
 
     #[test]

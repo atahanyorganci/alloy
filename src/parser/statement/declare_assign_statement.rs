@@ -1,12 +1,19 @@
+use std::fmt;
+
 use pest::iterators::Pair;
 
-use crate::parser::{expression::build_binary_expression, Expression, Rule, Statement};
+use crate::parser::{
+    expression::{build_expression, BinaryExpression},
+    ASTNode, Expression, Rule, Statement,
+};
 
+#[derive(Debug)]
 pub enum Type {
     Const,
     Variable,
 }
 
+#[derive(Debug)]
 pub struct DeclarationStatement {
     identifier: String,
     initial_value: Option<Box<dyn Expression>>,
@@ -17,9 +24,17 @@ impl Statement for DeclarationStatement {
     fn eval(&self) {
         todo!()
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+impl ASTNode for DeclarationStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::declaration_statement => pair.into_inner(),
+            _ => return None,
+        };
 
         let modifier_keyword = inner.next().unwrap();
         let modifier = match modifier_keyword.as_rule() {
@@ -35,18 +50,25 @@ impl Statement for DeclarationStatement {
         };
 
         let initial_value = match inner.next() {
-            Some(token) => Some(build_binary_expression(token.into_inner())),
+            Some(token) => build_expression(token),
             None => None,
         };
 
-        Box::from(DeclarationStatement {
+        Some(Box::from(DeclarationStatement {
             identifier,
             initial_value,
             modifier,
-        })
+        }))
     }
 }
 
+impl fmt::Display for DeclarationStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 pub struct AssignmentStatement {
     identifier: String,
     value: Box<dyn Expression>,
@@ -56,9 +78,17 @@ impl Statement for AssignmentStatement {
     fn eval(&self) {
         todo!()
     }
+}
 
-    fn build(pair: Pair<Rule>) -> Box<Self> {
-        let mut inner = pair.into_inner();
+impl ASTNode for AssignmentStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let mut inner = match pair.as_rule() {
+            Rule::assignment_statement => pair.into_inner(),
+            _ => return None,
+        };
 
         let identifier_token = inner.next().unwrap();
         let identifier = match identifier_token.as_rule() {
@@ -67,9 +97,15 @@ impl Statement for AssignmentStatement {
         };
 
         let expression = inner.next().unwrap();
-        let value = build_binary_expression(expression.into_inner());
+        let value = BinaryExpression::build(expression).unwrap();
 
-        Box::from(AssignmentStatement { identifier, value })
+        Some(Box::from(AssignmentStatement { identifier, value }))
+    }
+}
+
+impl fmt::Display for AssignmentStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
 
@@ -77,7 +113,7 @@ impl Statement for AssignmentStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{AlloyParser, Rule, Statement};
+    use crate::parser::{ASTNode, AlloyParser, Rule};
 
     use super::DeclarationStatement;
 
@@ -90,7 +126,7 @@ mod test {
 
     fn build_declaration_statement(input: &str) -> Box<DeclarationStatement> {
         let pair = statement_pair(input).unwrap();
-        DeclarationStatement::build(pair)
+        DeclarationStatement::build(pair).unwrap()
     }
 
     #[test]
