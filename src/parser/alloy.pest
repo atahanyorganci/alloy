@@ -40,13 +40,25 @@ binary_op = _{ add
     | logical_xor
 }
 
+// Keywords
+k_if = @{ "if" ~ WHITESPACE }
+k_else = @{ "else" ~ WHITESPACE }
+k_print = @{ "print" ~ WHITESPACE }
+k_while = @{ "while" ~ WHITESPACE }
+k_for = @{ "for" ~ WHITESPACE }
+k_return = @{ "return" ~ WHITESPACE }
+k_var = @{ "var" ~ WHITESPACE }
+k_const = @{ "const" ~ WHITESPACE }
+k_continue = @{ "continue" ~ WHITESPACE }
+k_break = @{ "break" ~ WHITESPACE }
+
 term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
 identifier = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 semi = { ";" }
-print_statement = { "print " ~ expression ~ semi}
-if_statement = { "if " ~ expression ~ "{" ~ statements ~ "}" }
+print_statement = { k_print ~ expression ~ semi}
+if_statement = { k_if ~ expression ~ "{" ~ statements ~ "}" }
 statement = _{ print_statement
     | if_statement
 }

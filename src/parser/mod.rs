@@ -1,5 +1,8 @@
+use std::fmt;
+
+use pest::iterators::Pair;
+
 use self::value::Value;
-use core::fmt;
 
 pub mod expression;
 pub mod statement;
@@ -15,4 +18,7 @@ pub trait Expression: fmt::Display {
 
 pub trait Statement {
     fn eval(&self);
+    fn build(pair: Pair<Rule>) -> Box<Self>
+    where
+        Self: Sized;
 }
