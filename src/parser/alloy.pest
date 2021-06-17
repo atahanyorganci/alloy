@@ -49,8 +49,8 @@ k_for = @{ "for" ~ WHITESPACE }
 k_return = @{ "return" ~ WHITESPACE }
 k_var = @{ "var" ~ WHITESPACE }
 k_const = @{ "const" ~ WHITESPACE }
-k_continue = @{ "continue" ~ WHITESPACE }
-k_break = @{ "break" ~ WHITESPACE }
+k_continue = @{ "continue" }
+k_break = @{ "break" }
 k_in = @{ "in" ~ WHITESPACE }
 keyword = { k_if
     | k_else
@@ -84,6 +84,7 @@ assignment_statement = { identifier ~ "=" ~ expression ~ semi }
 
 // Block Statement
 scoped_statements = _{ "{" ~ statements ~ "}" }
+block_statement = { scoped_statements }
 
 // If Statement
 if_body = { k_if ~ expression ~ scoped_statements }
@@ -91,10 +92,21 @@ else_if_body = { k_else ~ k_if ~ expression ~ scoped_statements }
 else_body = { k_else ~ scoped_statements }
 if_statement = { if_body ~ else_if_body* ~ else_body? }
 
+// Loop Statements
+break_statement = { k_break ~ semi }
+continue_statement = { k_continue ~ semi }
+loop_body_statement = _{ statement | break_statement | continue_statement }
+loop_body = { "{" ~ loop_body_statement* ~ "}"}
+while_statement = { k_while ~ expression ~ loop_body }
+for_statement = { k_for ~ identifier ~ k_in ~ expression ~ loop_body }
+
 statement = _{ print_statement
     | if_statement
     | declaration_statement
     | assignment_statement
+    | while_statement
+    | for_statement
+    | block_statement
 }
 statements = { statement* }
 program = _{ SOI ~ statement* ~ EOI }
