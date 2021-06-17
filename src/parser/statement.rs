@@ -32,7 +32,6 @@ impl Statement for IfStatement {
 }
 
 pub fn build_statement(pair: Pair<Rule>) -> Box<dyn Statement> {
-    println!("{}", pair);
     match pair.as_rule() {
         Rule::print_statement => Box::from(PrintStatement {
             expr: build_binary_expression(pair.into_inner()),

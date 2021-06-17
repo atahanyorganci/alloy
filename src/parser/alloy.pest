@@ -43,6 +43,7 @@ binary_op = _{ add
 term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
+identifier = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 semi = { ";" }
 print_statement = { "print " ~ expression ~ semi}
 if_statement = { "if " ~ expression ~ "{" ~ statements ~ "}" }
