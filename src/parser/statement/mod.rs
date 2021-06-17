@@ -3,6 +3,7 @@ use crate::parser::statement::if_statement::IfStatement;
 use super::{expression::build_binary_expression, Expression, Rule, Statement};
 use pest::iterators::{Pair, Pairs};
 
+pub mod declare_assign_statement;
 pub mod if_statement;
 
 pub struct PrintStatement {

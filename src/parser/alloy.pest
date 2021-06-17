@@ -51,17 +51,36 @@ k_var = @{ "var" ~ WHITESPACE }
 k_const = @{ "const" ~ WHITESPACE }
 k_continue = @{ "continue" ~ WHITESPACE }
 k_break = @{ "break" ~ WHITESPACE }
+k_in = @{ "in" ~ WHITESPACE }
+keyword = { k_if
+    | k_else
+    | k_print
+    | k_while
+    | k_for
+    | k_return
+    | k_var
+    | k_const
+    | k_continue
+    | k_break
+    | k_in
+}
 
 term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
-identifier = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+identifier = @{ !keyword ~ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 
 // Statements
-semi = { ";" }
+semi = _{ ";" }
 
 // Print Statement
 print_statement = { k_print ~ expression ~ semi}
+
+// Declaration and Assignment Statements
+declaration_statement = { k_var ~ identifier ~ semi
+    | (k_const | k_var) ~ identifier ~ "=" ~ expression ~ semi
+}
+assignment_statement = { identifier ~ "=" ~ expression ~ semi }
 
 // Block Statement
 scoped_statements = _{ "{" ~ statements ~ "}" }
@@ -74,6 +93,8 @@ if_statement = { if_body ~ else_if_body* ~ else_body? }
 
 statement = _{ print_statement
     | if_statement
+    | declaration_statement
+    | assignment_statement
 }
 statements = { statement* }
 program = _{ SOI ~ statement* ~ EOI }
