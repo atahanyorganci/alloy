@@ -119,6 +119,37 @@ impl fmt::Display for BreakStatement {
 }
 
 #[derive(Debug)]
+pub struct ExpressionStatement {
+    expression: Box<dyn Expression>,
+}
+
+impl Statement for ExpressionStatement {
+    fn eval(&self) {
+        self.expression.eval();
+    }
+}
+
+impl ASTNode for ExpressionStatement {
+    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
+    where
+        Self: Sized,
+    {
+        let expression_pair = match pair.as_rule() {
+            Rule::expression_statement => pair.into_inner().next().unwrap(),
+            _ => return None,
+        };
+        let expression = build_expression(expression_pair).unwrap();
+        Some(Box::from(Self { expression }))
+    }
+}
+
+impl fmt::Display for ExpressionStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 pub struct ContinueStatement;
 
 impl Statement for ContinueStatement {
@@ -156,6 +187,7 @@ pub fn build_statement(pair: Pair<Rule>) -> Box<dyn Statement> {
         Rule::block_statement => BlockStatement::build(pair).unwrap(),
         Rule::continue_statement => ContinueStatement::build(pair).unwrap(),
         Rule::break_statement => BreakStatement::build(pair).unwrap(),
+        Rule::expression_statement => ExpressionStatement::build(pair).unwrap(),
         _ => panic!("{}", pair),
     }
 }

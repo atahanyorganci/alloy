@@ -110,6 +110,8 @@ loop_body = { "{" ~ loop_body_statement* ~ "}"}
 while_statement = { k_while ~ expression ~ loop_body }
 for_statement = { k_for ~ identifier ~ k_in ~ expression ~ loop_body }
 
+expression_statement = { expression ~ semi }
+
 statement = _{ print_statement
     | if_statement
     | declaration_statement
@@ -117,6 +119,7 @@ statement = _{ print_statement
     | while_statement
     | for_statement
     | block_statement
+    | expression_statement
 }
 statements = { statement* }
 program = _{ SOI ~ statement* ~ EOI }
