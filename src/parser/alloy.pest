@@ -1,12 +1,22 @@
 WHITESPACE = _{ "\t" | " " | "\n"}
 
 digit = { ASCII_DIGIT | "_" }
-digits = { digit+ }
-sign = { "+" | "-" }
-unsigned_integer = @{ digits }
-unsigned_float = @{ digits? ~ "." ~ digits? }
-integer = { sign? ~ unsigned_integer }
-float = { sign? ~ unsigned_float }
+digits = _{ ASCII_DIGIT ~ digit* }
+plus = { "+" }
+minus = { "-" }
+sign = _{ plus | minus }
+
+binary = @{ "0b" ~ (ASCII_BIN_DIGIT | "_")+ }
+octal = @{ "0o" ~ (ASCII_OCT_DIGIT | "_")+ }
+hexadecimal = @{ "0x" ~ (ASCII_HEX_DIGIT | "_")+ }
+decimal = @{ !("0b" | "0o" | "0x") ~ digits ~ !(".") }
+unsigned = _{ binary | octal | hexadecimal | decimal}
+integer = { sign? ~ unsigned }
+
+dot_float = @{ digits? ~ "." ~ digits }
+float_dot = @{ digits ~ "." ~ digits? }
+float = { sign? ~ (float_dot | dot_float) }
+
 boolean = { "true" | "false" }
 value = { float | integer | boolean }
 

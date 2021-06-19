@@ -10,6 +10,12 @@ pub enum Value {
     Bool(bool),
 }
 
+#[derive(Debug)]
+pub enum ParseValueError {
+    InvalidRadix(u32),
+    IntegerOverflow,
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -292,27 +298,21 @@ impl ASTNode for Value {
             _ => return None,
         };
         let result = match value.as_rule() {
-            Rule::integer => {
-                let int = alloy_integer(value.as_str()).unwrap();
-                Box::new(Value::Integer(int))
-            }
-            Rule::float => {
-                let float = alloy_float(value.as_str()).unwrap();
-                Box::from(Value::Float(float))
-            }
+            Rule::integer => Value::parse_integer(value).unwrap(),
+            Rule::float => Value::parse_float(value).unwrap(),
             Rule::boolean => {
                 let s = value.as_str();
                 if s == "true" {
-                    Box::from(Value::Bool(true))
+                    Value::Bool(true)
                 } else if s == "false" {
-                    Box::from(Value::Bool(false))
+                    Value::Bool(false)
                 } else {
                     unreachable!()
                 }
             }
             _ => unreachable!(),
         };
-        Some(result)
+        Some(Box::from(result))
     }
 }
 
@@ -334,21 +334,61 @@ impl Value {
         let right: bool = rhs.into();
         Value::Bool(left != right)
     }
-}
 
-pub fn alloy_integer(integer: &str) -> Result<i32, ()> {
-    let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
-    match replaced.parse::<i32>() {
-        Ok(int) => Ok(int),
-        Err(_) => Err(()),
+    fn parse_float(pair: Pair<Rule>) -> Result<Self, ParseValueError> {
+        matches!(pair.as_rule(), Rule::float);
+        let float = Value::parse_float_from_str(pair.as_str())?;
+        Ok(Value::Float(float))
     }
-}
 
-pub fn alloy_float(float: &str) -> Result<f64, ()> {
-    let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
-    match replaced.parse::<f64>() {
-        Ok(float) => Ok(float),
-        Err(_) => Err(()),
+    fn parse_integer(pair: Pair<Rule>) -> Result<Self, ParseValueError> {
+        matches!(pair.as_rule(), Rule::integer);
+
+        let mut inner = pair.into_inner();
+        let first = inner.next().unwrap();
+        let integer = match inner.next() {
+            Some(rule) => {
+                let unsigned = Value::parse_unsigned_integer(rule)?;
+                match first.as_rule() {
+                    Rule::plus => unsigned,
+                    Rule::minus => -unsigned,
+                    _ => unreachable!(),
+                }
+            }
+            None => Value::parse_unsigned_integer(first)?,
+        };
+        Ok(Value::Integer(integer))
+    }
+
+    fn parse_unsigned_integer(pair: Pair<Rule>) -> Result<i32, ParseValueError> {
+        match pair.as_rule() {
+            Rule::binary => Value::parse_integer_from_str(pair.as_str(), 2),
+            Rule::octal => Value::parse_integer_from_str(pair.as_str(), 8),
+            Rule::decimal => Value::parse_integer_from_str(pair.as_str(), 10),
+            Rule::hexadecimal => Value::parse_integer_from_str(pair.as_str(), 16),
+            _ => unreachable!(),
+        }
+    }
+
+    fn parse_integer_from_str(integer: &str, radix: u32) -> Result<i32, ParseValueError> {
+        let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
+        let source = match radix {
+            2 | 8 | 16 => &replaced.as_str()[2..],
+            10 => replaced.as_str(),
+            _ => return Err(ParseValueError::InvalidRadix(radix)),
+        };
+        match i32::from_str_radix(source, radix) {
+            Ok(integer) => Ok(integer),
+            Err(_) => Err(ParseValueError::IntegerOverflow),
+        }
+    }
+
+    fn parse_float_from_str(float: &str) -> Result<f64, ParseValueError> {
+        let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
+        match replaced.parse::<f64>() {
+            Ok(float) => Ok(float),
+            Err(_) => unreachable!(),
+        }
     }
 }
 
@@ -479,13 +519,32 @@ mod test {
     }
 
     #[test]
+    fn parse_radix_integers() {
+        test_integer("0xF", 15);
+        test_integer("0xFF", 255);
+        test_integer("0xFF_FF", 65535);
+        test_integer("0o10", 8);
+        test_integer("0b101", 5);
+        test_integer("- 0xF", -15);
+        test_integer("-  0xFF", -255);
+        test_integer("- 0xFF_FF", -65535);
+        test_integer("- 0o10", -8);
+        test_integer("-\t0b101", -5);
+        test_integer("+0xF", 15);
+        test_integer("+0xFF", 255);
+        test_integer("+0xFF_FF", 65535);
+        test_integer("+0o10", 8);
+        test_integer("+0b101", 5);
+    }
+
+    #[test]
     fn overflow_test() {
-        assert!(alloy_integer("1_000_000_000_000").is_err());
+        assert!(Value::parse_integer_from_str("1_000_000_000_000", 10).is_err());
     }
 
     #[test]
     fn parse_float() {
-        test_float("1.0", 1.0);
+        test_float("1.0", 1.);
         test_float("-1.2", -1.2);
         test_float(".2", 0.2);
         test_float("1.", 1.0);
