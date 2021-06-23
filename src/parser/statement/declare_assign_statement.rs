@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::parser::{
-    expression::{build_expression, BinaryExpression},
+    expression::{binary::BinaryExpression, build_expression},
     ASTNode, Expression, Rule, Statement,
 };
 

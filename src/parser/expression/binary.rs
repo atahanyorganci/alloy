@@ -2,9 +2,7 @@ use std::fmt;
 
 use pest::{iterators::Pair, prec_climber::*};
 
-use crate::parser::value::Value;
-
-use super::{ASTNode, Expression, Rule};
+use crate::parser::{value::Value, ASTNode, Expression, Rule};
 
 lazy_static! {
     static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
@@ -33,20 +31,20 @@ pub struct BinaryExpression {
     right: Box<dyn Expression>,
 }
 
-impl fmt::Display for BinaryExpression {
+impl fmt::Debug for BinaryExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({} {} {})", self.left, self.operator, self.right)
+        write!(f, "({:?} {} {:?})", self.left, self.operator, self.right)
     }
 }
 
-impl fmt::Debug for BinaryExpression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", &self)
+impl fmt::Display for BinaryExpression {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!();
     }
 }
 
 impl Expression for BinaryExpression {
-    fn eval(&self) -> super::Value {
+    fn eval(&self) -> Value {
         let left = self.left.eval();
         let right = self.right.eval();
         match self.operator {
@@ -124,13 +122,6 @@ pub(crate) fn build_binary_expression(pair: Pair<Rule>) -> Box<dyn Expression> {
             })
         },
     )
-}
-
-pub fn build_expression(pair: Pair<Rule>) -> Option<Box<dyn Expression>> {
-    match pair.as_rule() {
-        Rule::expression => Some(build_binary_expression(pair)),
-        _ => None,
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
