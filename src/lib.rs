@@ -3,5 +3,6 @@ extern crate pest;
 extern crate pest_derive;
 #[macro_use]
 extern crate lazy_static;
+extern crate structopt;
 
 pub mod parser;
