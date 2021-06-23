@@ -2,7 +2,7 @@ use std::fmt;
 
 use pest::{iterators::Pair, prec_climber::*};
 
-use crate::parser::{value::Value, ASTNode, Expression, Rule};
+use crate::parser::{expression::build_expression, value::Value, ASTNode, Expression, Rule};
 
 lazy_static! {
     static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
@@ -82,7 +82,7 @@ impl ASTNode for BinaryExpression {
 
 pub(crate) fn build_binary_expression(pair: Pair<Rule>) -> Box<dyn Expression> {
     let expression = match pair.as_rule() {
-        Rule::expression => pair.into_inner(),
+        Rule::binary_expression => pair.into_inner(),
         _ => unreachable!(),
     };
     PREC_CLIMBER.climb(
@@ -90,7 +90,7 @@ pub(crate) fn build_binary_expression(pair: Pair<Rule>) -> Box<dyn Expression> {
         |pair: Pair<Rule>| -> Box<dyn Expression> {
             match pair.as_rule() {
                 Rule::value => Value::build(pair).unwrap(),
-                Rule::expression => build_binary_expression(pair),
+                Rule::expression => build_expression(pair).unwrap(),
                 _ => unreachable!(),
             }
         },
@@ -167,6 +167,24 @@ impl fmt::Display for BinaryOperator {
 
 #[cfg(test)]
 mod tests {
+    use pest::Parser;
+
+    use crate::parser::{value::Value, AlloyParser, Rule};
+
+    use super::build_binary_expression;
+
+    fn parse_binary_expression(input: &str) -> Value {
+        let mut tokens = AlloyParser::parse(Rule::binary_expression, input).unwrap();
+        build_binary_expression(tokens.next().unwrap()).eval()
+    }
+
     #[test]
-    fn test() {}
+    fn build_expression_test() {
+        assert_eq!(parse_binary_expression("1 + 1"), 2.into());
+        assert_eq!(parse_binary_expression("1 + 2 * 3"), 7.into());
+        assert_eq!(parse_binary_expression("(1 + 2) * 3"), 9.into());
+        assert_eq!(parse_binary_expression("1 - 1"), 0.into());
+        assert_eq!(parse_binary_expression("1 + 2 + 3"), 6.into());
+        assert_eq!(parse_binary_expression("(1 + 2) / 3"), 1.into());
+    }
 }

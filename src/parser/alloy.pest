@@ -20,6 +20,7 @@ float = { sign? ~ (float_dot | dot_float) }
 boolean = { "true" | "false" }
 value = { float | integer | boolean }
 
+// Binary Operators
 add = { "+" }
 subtract = { "-" }
 multiply = { "*" }
@@ -31,9 +32,9 @@ greater_than = { ">"}
 greater_than_eq = { ">="}
 equal_to = { "==" }
 not_equal_to = { "!=" }
-logical_and = { "and" | "&&" }
-logical_or = { "or" | "||" }
-logical_xor = { "xor" }
+logical_and = { k_and | "&&" }
+logical_or = { k_or | "||" }
+logical_xor = { k_xor }
 binary_op = _{ add
     | subtract
     | multiply
@@ -98,8 +99,12 @@ keyword = { word_if
     | word_xor
 }
 
-term = _{ value | "(" ~ expression ~ ")" }
-expression = { term ~ (binary_op ~ term)* }
+not = { k_not | "!" }
+term = _{ value | identifier | "(" ~ expression ~ ")" | precedent_unary_expression }
+precedent_unary_expression = { (plus | minus) ~ term }
+binary_expression = { term ~ (binary_op ~ term)+ }
+unprecedent_unary_expression = { not ~ expression }
+expression = { unprecedent_unary_expression | binary_expression | term }
 
 identifier = @{ !keyword ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
 
