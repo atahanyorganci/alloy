@@ -2,10 +2,7 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{
-    expression::{binary::BinaryExpression, build_expression},
-    ASTNode, Expression, Rule, Statement,
-};
+use crate::parser::{expression::build_expression, ASTNode, Expression, Rule, Statement};
 
 #[derive(Debug)]
 pub enum Type {
@@ -97,7 +94,7 @@ impl ASTNode for AssignmentStatement {
         };
 
         let expression = inner.next().unwrap();
-        let value = BinaryExpression::build(expression).unwrap();
+        let value = build_expression(expression).unwrap();
 
         Some(Box::from(AssignmentStatement { identifier, value }))
     }
@@ -115,7 +112,7 @@ mod test {
 
     use crate::parser::{ASTNode, AlloyParser, Rule};
 
-    use super::DeclarationStatement;
+    use super::{AssignmentStatement, DeclarationStatement};
 
     fn statement_pair(input: &str) -> Option<Pair<Rule>> {
         match AlloyParser::parse(Rule::program, input) {
@@ -134,6 +131,18 @@ mod test {
         build_declaration_statement("var myVar;");
         build_declaration_statement("var myVar = 2;");
         build_declaration_statement("const myConst = 2;");
+    }
+
+    fn build_assignment_statement(input: &str) -> Box<AssignmentStatement> {
+        let pair = statement_pair(input).unwrap();
+        AssignmentStatement::build(pair).unwrap()
+    }
+
+    #[test]
+    fn test_assignment_statement() {
+        build_assignment_statement("myVar = 120;");
+        build_assignment_statement("myVar = true;");
+        build_assignment_statement("myVar = 12 * 12 - 12;");
     }
 
     #[test]
