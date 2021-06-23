@@ -142,8 +142,8 @@ mod test {
         assert!(statement_pair("var myVar").is_none());
         assert!(statement_pair("var myVar = 2").is_none());
         assert!(statement_pair("const myVar = 2").is_none());
-        assert!(statement_pair("const const = 2").is_none());
-        assert!(statement_pair("const var = 2").is_none());
-        assert!(statement_pair("const if = 2").is_none());
+        assert!(statement_pair("const const = 2;").is_none());
+        assert!(statement_pair("const var = 2;").is_none());
+        assert!(statement_pair("const if = 2;").is_none());
     }
 }

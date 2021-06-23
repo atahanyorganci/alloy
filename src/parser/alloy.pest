@@ -51,34 +51,57 @@ binary_op = _{ add
 }
 
 // Keywords
-k_if = @{ "if" ~ WHITESPACE }
-k_else = @{ "else" ~ WHITESPACE }
-k_print = @{ "print" ~ WHITESPACE }
-k_while = @{ "while" ~ WHITESPACE }
-k_for = @{ "for" ~ WHITESPACE }
-k_return = @{ "return" ~ WHITESPACE }
-k_var = @{ "var" ~ WHITESPACE }
-k_const = @{ "const" ~ WHITESPACE }
-k_continue = @{ "continue" }
-k_break = @{ "break" }
-k_in = @{ "in" ~ WHITESPACE }
-keyword = { k_if
-    | k_else
-    | k_print
-    | k_while
-    | k_for
-    | k_return
-    | k_var
-    | k_const
-    | k_continue
-    | k_break
-    | k_in
+word_if = { "if" }
+k_if = @{ word_if ~ WHITESPACE}
+word_else = { "else" }
+k_else = @{ word_else ~ WHITESPACE}
+word_print = { "print" }
+k_print = @{ word_print ~ WHITESPACE}
+word_while = { "while" }
+k_while = @{ word_while ~ WHITESPACE}
+word_for = { "for" }
+k_for = @{ word_for ~ WHITESPACE}
+word_return = { "return" }
+k_return = @{ word_return ~ WHITESPACE}
+word_var = { "var" }
+k_var = @{ word_var ~ WHITESPACE}
+word_const = { "const" }
+k_const = @{ word_const ~ WHITESPACE}
+word_continue = { "continue" }
+k_continue = @{ word_continue }
+word_break = { "break" }
+k_break = @{ word_break }
+word_in = { "in" }
+k_in = @{ word_in ~ WHITESPACE}
+word_and = { "and" }
+k_and = @{ word_and ~ WHITESPACE}
+word_or = { "or" }
+k_or = @{ word_or ~ WHITESPACE}
+word_not = { "not" }
+k_not = @{ word_not ~ WHITESPACE}
+word_xor = { "xor" }
+k_xor = @{ word_xor ~ WHITESPACE}
+keyword = { word_if
+    | word_else
+    | word_print
+    | word_while
+    | word_for
+    | word_return
+    | word_var
+    | word_const
+    | word_continue
+    | word_break
+    | word_in
+    | word_and
+    | word_or
+    | word_not
+    | word_xor
 }
 
 term = _{ value | "(" ~ expression ~ ")" }
 expression = { term ~ (binary_op ~ term)* }
 
-identifier = @{ !keyword ~ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+identifier = @{ !keyword ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // Statements
 semi = _{ ";" }

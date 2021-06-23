@@ -234,7 +234,6 @@ mod test {
 
     #[test]
     fn test_wrong_print_statements() {
-        assert!(statement_pair("print2;").is_none());
         assert!(statement_pair("print 2").is_none());
         assert!(statement_pair("print;").is_none());
     }
