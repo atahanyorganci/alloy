@@ -2,13 +2,16 @@ use std::{borrow::Borrow, fmt};
 
 use pest::iterators::{Pair, Pairs};
 
-use crate::parser::{
-    expression::build_expression,
-    statement::{
-        declare_assign_statement::{AssignmentStatement, DeclarationStatement},
-        for_statement::ForStatement,
-        if_statement::IfStatement,
-        while_statement::WhileStatement,
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{
+        expression::build_expression,
+        statement::{
+            declare_assign_statement::{AssignmentStatement, DeclarationStatement},
+            for_statement::ForStatement,
+            if_statement::IfStatement,
+            while_statement::WhileStatement,
+        },
     },
 };
 
@@ -28,6 +31,12 @@ impl Statement for PrintStatement {
     fn eval(&self) {
         let val = self.expression.eval();
         println!("{}", val);
+    }
+}
+
+impl Compile for PrintStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
     }
 }
 
@@ -58,6 +67,12 @@ impl fmt::Display for PrintStatement {
 #[derive(Debug)]
 pub struct BlockStatement {
     body: Vec<Box<dyn Statement>>,
+}
+
+impl Compile for BlockStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
 }
 
 impl Statement for BlockStatement {
@@ -100,6 +115,12 @@ impl Statement for BreakStatement {
     }
 }
 
+impl Compile for BreakStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
+
 impl ASTNode for BreakStatement {
     fn build(pair: Pair<Rule>) -> Option<Box<Self>>
     where
@@ -129,6 +150,14 @@ impl Statement for ExpressionStatement {
     }
 }
 
+impl Compile for ExpressionStatement {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.expression.compile(compiler)?;
+        compiler.emit(Instruction::Pop);
+        Ok(())
+    }
+}
+
 impl ASTNode for ExpressionStatement {
     fn build(pair: Pair<Rule>) -> Option<Box<Self>>
     where
@@ -151,6 +180,12 @@ impl fmt::Display for ExpressionStatement {
 
 #[derive(Debug)]
 pub struct ContinueStatement;
+
+impl Compile for ContinueStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl Statement for ContinueStatement {
     fn eval(&self) {

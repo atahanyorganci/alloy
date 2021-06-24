@@ -2,8 +2,12 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{
-    expression::build_expression, statement::build_statements, ASTNode, Expression, Rule, Statement,
+use crate::{
+    compiler::{Compile, Compiler, CompilerError},
+    parser::{
+        expression::build_expression, statement::build_statements, ASTNode, Expression, Rule,
+        Statement,
+    },
 };
 
 #[derive(Debug)]
@@ -15,6 +19,12 @@ pub struct ForStatement {
 
 impl Statement for ForStatement {
     fn eval(&self) {
+        todo!()
+    }
+}
+
+impl Compile for ForStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
         todo!()
     }
 }

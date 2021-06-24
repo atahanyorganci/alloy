@@ -215,3 +215,41 @@ pub enum Instruction {
     UnaryMinus,
     UnaryNot,
 }
+
+#[cfg(test)]
+mod tests {
+    use pest::Parser;
+
+    use crate::parser::{statement::build_statement, AlloyParser, Rule};
+
+    use super::{Compiler, CompilerError};
+
+    fn compile(input: &str) -> Result<(), CompilerError> {
+        let statements = AlloyParser::parse(Rule::program, input).unwrap();
+        let mut compiler = Compiler::new();
+        for statement in statements {
+            match statement.as_rule() {
+                Rule::EOI => break,
+                _ => build_statement(statement).compile(&mut compiler)?,
+            }
+        }
+        println!("{}", compiler);
+        Ok(())
+    }
+
+    #[test]
+    fn compile_statements() {
+        assert!(compile("5 + 12 * 4;").is_ok());
+        assert!(compile("const x = 10 * 12; 10 * x;").is_ok());
+        assert!(compile("const x = 10; var y = x; y = x * y;").is_ok());
+    }
+
+    #[test]
+    fn wont_compile_statements() {
+        assert!(compile("const x = 5; x = 5;").is_err());
+        assert!(compile("const x = 5; const x = 5;").is_err());
+        assert!(compile("const x = 5; var x = 5;").is_err());
+        assert!(compile("const x = x;").is_err());
+        assert!(compile("var x = x;").is_err());
+    }
+}

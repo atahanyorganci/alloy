@@ -2,7 +2,14 @@ use std::fmt;
 
 use pest::{iterators::Pair, prec_climber::*};
 
-use crate::parser::{expression::build_expression, value::Value, ASTNode, Expression, Rule};
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{
+        expression::{build_expression, identifier::IdentifierExpression},
+        value::Value,
+        ASTNode, Expression, Rule,
+    },
+};
 
 lazy_static! {
     static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
@@ -40,6 +47,32 @@ impl fmt::Debug for BinaryExpression {
 impl fmt::Display for BinaryExpression {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
+    }
+}
+
+impl Compile for BinaryExpression {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.left.compile(compiler)?;
+        self.right.compile(compiler)?;
+        let instruction = match self.operator {
+            BinaryOperator::Add => Instruction::BinaryAdd,
+            BinaryOperator::Subtract => Instruction::BinarySubtract,
+            BinaryOperator::Multiply => Instruction::BinaryMultiply,
+            BinaryOperator::Divide => Instruction::BinaryDivide,
+            BinaryOperator::Reminder => Instruction::BinaryReminder,
+            BinaryOperator::Power => Instruction::BinaryPower,
+            BinaryOperator::LessThan => Instruction::BinaryLessThan,
+            BinaryOperator::LessThanEqual => Instruction::BinaryLessThanEqual,
+            BinaryOperator::GreaterThan => Instruction::BinaryGreaterThan,
+            BinaryOperator::GreaterThanEqual => Instruction::BinaryGreaterThanEqual,
+            BinaryOperator::Equal => Instruction::BinaryEqual,
+            BinaryOperator::NotEqual => Instruction::BinaryNotEqual,
+            BinaryOperator::LogicalAnd => Instruction::BinaryLogicalAnd,
+            BinaryOperator::LogicalOr => Instruction::BinaryLogicalOr,
+            BinaryOperator::LogicalXor => Instruction::BinaryLogicalXor,
+        };
+        compiler.emit(instruction);
+        Ok(())
     }
 }
 
@@ -91,7 +124,8 @@ pub(crate) fn build_binary_expression(pair: Pair<Rule>) -> Box<dyn Expression> {
             match pair.as_rule() {
                 Rule::value => Value::build(pair).unwrap(),
                 Rule::expression => build_expression(pair).unwrap(),
-                _ => unreachable!(),
+                Rule::identifier => IdentifierExpression::build(pair).unwrap(),
+                _ => unreachable!("{}", pair),
             }
         },
         |left: Box<dyn Expression>,

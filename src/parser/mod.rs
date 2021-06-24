@@ -2,6 +2,8 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
+use crate::compiler::Compile;
+
 use self::value::Value;
 
 pub mod expression;
@@ -20,7 +22,7 @@ pub trait Statement: ASTNode {
     fn eval(&self);
 }
 
-pub trait ASTNode: fmt::Debug + fmt::Display {
+pub trait ASTNode: fmt::Debug + fmt::Display + Compile {
     fn build(pair: Pair<Rule>) -> Option<Box<Self>>
     where
         Self: Sized;

@@ -1,3 +1,5 @@
+use crate::compiler::{Compiler, CompilerError, Instruction};
+
 use super::*;
 use pest::iterators::Pair;
 use std::convert::Into;
@@ -285,6 +287,14 @@ impl From<bool> for Value {
 impl Expression for Value {
     fn eval(&self) -> Value {
         *self
+    }
+}
+
+impl Compile for Value {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        let index = compiler.register_value(*self)?;
+        compiler.emit(Instruction::LoadValue(index));
+        Ok(())
     }
 }
 

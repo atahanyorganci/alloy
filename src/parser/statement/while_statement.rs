@@ -2,14 +2,24 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{
-    expression::build_expression, statement::build_statements, ASTNode, Expression, Rule, Statement,
+use crate::{
+    compiler::{Compile, Compiler, CompilerError},
+    parser::{
+        expression::build_expression, statement::build_statements, ASTNode, Expression, Rule,
+        Statement,
+    },
 };
 
 #[derive(Debug)]
 pub struct WhileStatement {
     condition: Box<dyn Expression>,
     body: Vec<Box<dyn Statement>>,
+}
+
+impl Compile for WhileStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
 }
 
 impl Statement for WhileStatement {

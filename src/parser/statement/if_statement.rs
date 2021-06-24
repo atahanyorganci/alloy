@@ -2,8 +2,12 @@ use std::{borrow::Borrow, fmt};
 
 use pest::iterators::Pair;
 
-use crate::parser::{
-    expression::build_expression, statement::build_statements, ASTNode, Expression, Rule, Statement,
+use crate::{
+    compiler::{Compile, Compiler, CompilerError},
+    parser::{
+        expression::build_expression, statement::build_statements, ASTNode, Expression, Rule,
+        Statement,
+    },
 };
 
 #[derive(Debug)]
@@ -12,6 +16,12 @@ pub struct IfStatement {
     statements: Vec<Box<dyn Statement>>,
     else_if_statements: Vec<ElseIfStatement>,
     else_statement: Option<ElseStatement>,
+}
+
+impl Compile for IfStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
 }
 
 impl Statement for IfStatement {
@@ -88,6 +98,12 @@ pub struct ElseIfStatement {
     statements: Vec<Box<dyn Statement>>,
 }
 
+impl Compile for ElseIfStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
+
 impl Statement for ElseIfStatement {
     fn eval(&self) {
         self.do_eval();
@@ -143,6 +159,12 @@ impl ElseIfStatement {
 #[derive(Debug)]
 pub struct ElseStatement {
     statements: Vec<Box<dyn Statement>>,
+}
+
+impl Compile for ElseStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
 }
 
 impl Statement for ElseStatement {

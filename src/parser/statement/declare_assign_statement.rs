@@ -2,11 +2,14 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{expression::build_expression, ASTNode, Expression, Rule, Statement};
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{expression::build_expression, ASTNode, Expression, Rule, Statement},
+};
 
-#[derive(Debug)]
-pub enum Type {
-    Const,
+#[derive(Debug, Clone, Copy)]
+pub enum VariableKind {
+    Constant,
     Variable,
 }
 
@@ -14,12 +17,32 @@ pub enum Type {
 pub struct DeclarationStatement {
     identifier: String,
     initial_value: Option<Box<dyn Expression>>,
-    modifier: Type,
+    kind: VariableKind,
 }
 
 impl Statement for DeclarationStatement {
     fn eval(&self) {
         todo!()
+    }
+}
+
+impl Compile for DeclarationStatement {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        match &self.initial_value {
+            Some(initial_value) => initial_value.compile(compiler)?,
+            None => {}
+        }
+        let index = match self.kind {
+            VariableKind::Constant => {
+                assert!(self.initial_value.is_some());
+                compiler.register_const(&self.identifier)?
+            }
+            VariableKind::Variable => compiler.register_var(&self.identifier)?,
+        };
+        if self.initial_value.is_some() {
+            compiler.emit(Instruction::StoreSymbol(index));
+        }
+        Ok(())
     }
 }
 
@@ -35,8 +58,8 @@ impl ASTNode for DeclarationStatement {
 
         let modifier_keyword = inner.next().unwrap();
         let modifier = match modifier_keyword.as_rule() {
-            Rule::k_const => Type::Const,
-            Rule::k_var => Type::Variable,
+            Rule::k_const => VariableKind::Constant,
+            Rule::k_var => VariableKind::Variable,
             _ => unreachable!(),
         };
 
@@ -54,7 +77,7 @@ impl ASTNode for DeclarationStatement {
         Some(Box::from(DeclarationStatement {
             identifier,
             initial_value,
-            modifier,
+            kind: modifier,
         }))
     }
 }
@@ -69,6 +92,21 @@ impl fmt::Display for DeclarationStatement {
 pub struct AssignmentStatement {
     identifier: String,
     value: Box<dyn Expression>,
+}
+
+impl Compile for AssignmentStatement {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        let index = match compiler.get_identifer(&self.identifier) {
+            Some(symbol) => match symbol.kind {
+                VariableKind::Constant => return Err(CompilerError::AssignmentToConst),
+                VariableKind::Variable => symbol.index,
+            },
+            None => return Err(CompilerError::UndefinedIdentifer),
+        };
+        self.value.compile(compiler)?;
+        compiler.emit(Instruction::StoreSymbol(index));
+        Ok(())
+    }
 }
 
 impl Statement for AssignmentStatement {

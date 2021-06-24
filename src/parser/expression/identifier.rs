@@ -2,10 +2,24 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{value::Value, ASTNode, Expression, Rule};
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{value::Value, ASTNode, Expression, Rule},
+};
 
 pub struct IdentifierExpression {
     identifier: String,
+}
+
+impl Compile for IdentifierExpression {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        let instruction = match compiler.get_identifer(&self.identifier) {
+            Some(symbol) => Instruction::LoadSymbol(symbol.index),
+            None => return Err(CompilerError::UndefinedIdentifer),
+        };
+        compiler.emit(instruction);
+        Ok(())
+    }
 }
 
 impl Expression for IdentifierExpression {

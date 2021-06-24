@@ -2,7 +2,10 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{expression::build_expression, value::Value, ASTNode, Expression, Rule};
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{expression::build_expression, value::Value, ASTNode, Expression, Rule},
+};
 
 pub struct UnaryExpression {
     operator: UnaryOperator,
@@ -12,6 +15,18 @@ pub struct UnaryExpression {
 impl Expression for UnaryExpression {
     fn eval(&self) -> Value {
         todo!()
+    }
+}
+
+impl Compile for UnaryExpression {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.expression.compile(compiler)?;
+        match self.operator {
+            UnaryOperator::Plus => {}
+            UnaryOperator::Minus => compiler.emit(Instruction::UnaryMinus),
+            UnaryOperator::Not => compiler.emit(Instruction::UnaryNot),
+        }
+        Ok(())
     }
 }
 
