@@ -1,4 +1,10 @@
-use std::{borrow::Borrow, collections::HashMap, convert::TryInto, fmt};
+use std::{
+    borrow::Borrow,
+    collections::HashMap,
+    convert::TryInto,
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use crate::parser::{statement::declare_assign_statement::VariableKind, value::Value};
 
@@ -6,10 +12,31 @@ pub trait Compile {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
 }
 
+#[derive(Debug, Hash, Clone, Copy)]
+pub struct Context {
+    kind: ContextKind,
+    label: Label,
+}
+
+impl Context {
+    pub fn get_label(&self) -> Label {
+        self.label
+    }
+}
+
+#[derive(Debug, Hash, Clone, Copy)]
+pub enum ContextKind {
+    If,
+    Loop,
+}
+
 #[derive(Debug, Default)]
 pub struct Compiler {
     symbol_table: SymbolTable,
     instructions: Vec<Instruction>,
+    labels: HashMap<Label, Vec<usize>>,
+    label_count: usize,
+    context: Vec<Context>,
 }
 
 fn get_width(mut len: usize) -> usize {
@@ -80,6 +107,90 @@ impl Compiler {
             _ => write!(f, "{:?}", instruction),
         }
     }
+
+    pub fn make_label(&mut self) -> Label {
+        let label: Label = self.label_count.into();
+        self.labels.insert(label.clone(), Vec::new());
+        self.label_count += 1;
+        label
+    }
+
+    pub fn make_label_now(&mut self) -> (usize, Label) {
+        let target = self.instructions.len().try_into().unwrap();
+        let label = self.make_label();
+        (target, label)
+    }
+
+    pub fn emit_jump(&mut self, jump: Instruction, label: &Label) -> Result<(), CompilerError> {
+        match jump {
+            Instruction::Jump(_) | Instruction::JumpIfTrue(_) | Instruction::JumpIfFalse(_) => {}
+            _ => return Err(CompilerError::InvalidInstruction),
+        }
+        match self.labels.get_mut(label) {
+            Some(labels) => {
+                let instruction_index = self.instructions.len();
+                labels.push(instruction_index);
+                self.instructions.push(jump);
+                Ok(())
+            }
+            None => Err(CompilerError::InvalidLabel),
+        }
+    }
+
+    pub fn place_label(&mut self, label: &Label) -> Result<(), CompilerError> {
+        let target = match label.target {
+            Some(target) => target,
+            None => return Err(CompilerError::InvalidLabel),
+        };
+        let indexes = match self.labels.get(label) {
+            Some(indexes) => indexes,
+            None => return Err(CompilerError::InvalidLabel),
+        };
+        for index in indexes {
+            let instruction = self.instructions.get(*index).unwrap();
+            let patched = match instruction {
+                Instruction::Jump(_) => Instruction::Jump(target),
+                Instruction::JumpIfTrue(_) => Instruction::JumpIfTrue(target),
+                Instruction::JumpIfFalse(_) => Instruction::JumpIfFalse(target),
+                _ => return Err(CompilerError::InvalidInstruction),
+            };
+            self.instructions[*index] = patched;
+        }
+        Ok(())
+    }
+
+    pub fn place_label_here(&mut self, mut label: Label) -> Result<(), CompilerError> {
+        let target = self.instructions.len().try_into().unwrap();
+        label.set_target(target);
+        self.place_label(&label)
+    }
+
+    pub fn push_if_context(&mut self) -> Label {
+        let label = self.make_label();
+        self.context.push(Context {
+            label: label.clone(),
+            kind: ContextKind::If,
+        });
+        label
+    }
+
+    pub fn get_context(&mut self) -> Option<&Context> {
+        self.context.last()
+    }
+
+    pub fn pop_context(&mut self) -> Result<(), CompilerError> {
+        if let Some(context) = self.context.pop() {
+            self.place_label_here(context.label)?;
+            self.drop_label(&context.label);
+            Ok(())
+        } else {
+            Err(CompilerError::AssignmentToConst)
+        }
+    }
+
+    pub fn drop_label(&mut self, label: &Label) {
+        self.labels.remove(label);
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -89,6 +200,8 @@ pub enum CompilerError {
     Redefinition,
     UndefinedIdentifer,
     AssignmentToConst,
+    InvalidInstruction,
+    InvalidLabel,
 }
 
 #[derive(Debug, Default)]
@@ -191,12 +304,66 @@ impl Symbol {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Label {
+    count: usize,
+    target: Option<u16>,
+}
+
+impl Label {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn has_target(&self) -> bool {
+        self.target.is_some()
+    }
+
+    pub fn target(&self) -> u16 {
+        self.target.unwrap()
+    }
+
+    pub fn set_target(&mut self, target: u16) {
+        self.target = Some(target);
+    }
+}
+
+impl PartialEq for Label {
+    fn eq(&self, other: &Self) -> bool {
+        self.count == other.count
+    }
+}
+
+impl Eq for Label {
+    fn assert_receiver_is_total_eq(&self) {}
+}
+
+impl Hash for Label {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_usize(self.count);
+    }
+}
+
+impl From<usize> for Label {
+    fn from(count: usize) -> Self {
+        Self {
+            count,
+            target: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Instruction {
     StoreSymbol(u16),
     LoadSymbol(u16),
     LoadValue(u16),
     Pop,
+    // Jump Instructions
+    Jump(u16),
+    JumpIfTrue(u16),
+    JumpIfFalse(u16),
+    // Binary Operator Instructions
     BinaryAdd,
     BinarySubtract,
     BinaryMultiply,
@@ -212,15 +379,24 @@ pub enum Instruction {
     BinaryLogicalAnd,
     BinaryLogicalOr,
     BinaryLogicalXor,
+    // Unary Operators
     UnaryMinus,
     UnaryNot,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        collections::{hash_map::DefaultHasher, HashMap},
+        hash::{Hash, Hasher},
+    };
+
     use pest::Parser;
 
-    use crate::parser::{statement::build_statement, AlloyParser, Rule};
+    use crate::{
+        compiler::Label,
+        parser::{statement::build_statement, AlloyParser, Rule},
+    };
 
     use super::{Compiler, CompilerError};
 
@@ -242,6 +418,12 @@ mod tests {
         assert!(compile("5 + 12 * 4;").is_ok());
         assert!(compile("const x = 10 * 12; 10 * x;").is_ok());
         assert!(compile("const x = 10; var y = x; y = x * y;").is_ok());
+        assert!(compile("if true { const x = 12; }").is_ok());
+        assert!(compile("if true { const x = 12; } else { const y = 12; } const z = 12;").is_ok());
+        assert!(compile("if true { const x = 12; } else { const y = 12; } const z = 12;").is_ok());
+        assert!(compile("if true { const a = 0; } else if false { const b = 10; } else { const c = 20; } const d = 30;").is_ok());
+        assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } const d = 30;").is_ok());
+        assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } else { const d = 30; }").is_ok());
     }
 
     #[test]
@@ -251,5 +433,41 @@ mod tests {
         assert!(compile("const x = 5; var x = 5;").is_err());
         assert!(compile("const x = x;").is_err());
         assert!(compile("var x = x;").is_err());
+    }
+
+    #[test]
+    fn test_label_equality() {
+        let first = Label::new();
+        let mut second = Label::new();
+        second.set_target(124);
+        assert_eq!(first, second)
+    }
+
+    #[test]
+    fn test_label_hash() {
+        let first = Label::new();
+        let mut second = Label::new();
+        second.set_target(124);
+
+        let mut hasher = DefaultHasher::new();
+        first.hash(&mut hasher);
+        let first_hash = hasher.finish();
+
+        hasher = DefaultHasher::new();
+        second.hash(&mut hasher);
+        let second_hash = hasher.finish();
+
+        assert_eq!(first_hash, second_hash);
+    }
+
+    #[test]
+    fn test_label_as_key() {
+        let first = Label::new();
+        let mut second = Label::new();
+        second.set_target(124);
+
+        let mut map = HashMap::new();
+        map.insert(first, 1);
+        assert!(map.contains_key(&second));
     }
 }
