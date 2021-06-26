@@ -222,6 +222,8 @@ pub enum CompilerError {
     AssignmentToConst,
     InvalidInstruction,
     InvalidLabel,
+    BreakOutsideLoop,
+    ContinueOutsideLoop,
 }
 
 #[derive(Debug, Default)]
@@ -379,6 +381,8 @@ pub enum Instruction {
     LoadSymbol(u16),
     LoadValue(u16),
     Pop,
+    // Display Instruction to be removed
+    Display,
     // Jump Instructions
     Jump(u16),
     JumpIfTrue(u16),
@@ -445,6 +449,8 @@ mod tests {
         assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } const d = 30;").is_ok());
         assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } else { const d = 30; }").is_ok());
         assert!(compile("while true { const x = 12; } const y = 12;").is_ok());
+        assert!(compile("while true { print 12; break; } print 54;").is_ok());
+        assert!(compile("while true { print 12; continue; } print 12;").is_ok());
     }
 
     #[test]

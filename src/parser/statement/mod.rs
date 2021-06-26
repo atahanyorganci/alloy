@@ -35,8 +35,9 @@ impl Statement for PrintStatement {
 }
 
 impl Compile for PrintStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        compiler.emit(Instruction::Display);
+        Ok(())
     }
 }
 
@@ -116,8 +117,14 @@ impl Statement for BreakStatement {
 }
 
 impl Compile for BreakStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        match compiler.get_loop_context() {
+            Some(context) => {
+                let loop_end = context.end_label().clone();
+                compiler.emit_jump(Instruction::Jump(0), &loop_end)
+            }
+            None => Err(CompilerError::BreakOutsideLoop),
+        }
     }
 }
 
@@ -182,8 +189,14 @@ impl fmt::Display for ExpressionStatement {
 pub struct ContinueStatement;
 
 impl Compile for ContinueStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        match compiler.get_loop_context() {
+            Some(context) => {
+                let loop_end = context.start_label().clone();
+                compiler.emit_jump(Instruction::Jump(0), &loop_end)
+            }
+            None => Err(CompilerError::BreakOutsideLoop),
+        }
     }
 }
 
