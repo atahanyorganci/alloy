@@ -20,7 +20,7 @@ pub struct IfStatement {
 
 impl Compile for IfStatement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let end_label = compiler.push_if_context();
+        let context = compiler.push_if_context();
         let if_body_end = compiler.make_label();
 
         // If body
@@ -40,7 +40,7 @@ impl Compile for IfStatement {
 
         // Apart from the else statement which implicitly exits IfStatement's instructions
         // Each of the conditonally executed statement block has to jump to the exit
-        compiler.emit_jump(Instruction::Jump(0), &end_label)?;
+        compiler.emit_jump(Instruction::Jump(0), &context.end_label())?;
         compiler.place_label_here(if_body_end)?;
 
         // // If Else Bodies
@@ -149,10 +149,12 @@ impl Compile for ElseIfStatement {
         for statement in self.statements.iter() {
             statement.compile(compiler)?;
         }
-        let if_end = compiler.get_context().unwrap().get_label();
-        compiler.emit_jump(Instruction::Jump(0), &if_end)?;
+        let context = compiler.get_context().unwrap();
+        let end_label = context.end_label().clone();
+        compiler.emit_jump(Instruction::Jump(0), &end_label)?;
 
         compiler.place_label_here(else_if_end)?;
+        compiler.drop_label(&else_if_end);
         Ok(())
     }
 }

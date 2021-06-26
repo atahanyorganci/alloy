@@ -15,16 +15,21 @@ pub trait Compile {
 #[derive(Debug, Hash, Clone, Copy)]
 pub struct Context {
     kind: ContextKind,
-    label: Label,
+    start: Label,
+    end: Label,
 }
 
 impl Context {
-    pub fn get_label(&self) -> Label {
-        self.label
+    pub fn start_label<'a>(&'a self) -> &'a Label {
+        &self.start
+    }
+
+    pub fn end_label<'a>(&'a self) -> &'a Label {
+        &self.end
     }
 }
 
-#[derive(Debug, Hash, Clone, Copy)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum ContextKind {
     If,
     Loop,
@@ -166,28 +171,37 @@ impl Compiler {
         self.place_label(&label)
     }
 
-    pub fn push_if_context(&mut self) -> Label {
+    pub fn push_if_context(&mut self) -> Context {
         self.push_context(ContextKind::If)
     }
 
-    pub fn push_loop_context(&mut self) -> Label {
+    pub fn push_loop_context(&mut self) -> Context {
         self.push_context(ContextKind::Loop)
     }
 
-    fn push_context(&mut self, kind: ContextKind) -> Label {
-        let label = self.make_label();
-        self.context.push(Context { label, kind });
-        label
+    fn push_context(&mut self, kind: ContextKind) -> Context {
+        let start = self.make_label_now();
+        let end = self.make_label();
+        let context = Context { start, end, kind };
+        self.context.push(context.clone());
+        context
     }
 
-    pub fn get_context(&mut self) -> Option<&Context> {
+    pub fn get_context(&self) -> Option<&Context> {
         self.context.last()
+    }
+
+    pub fn get_loop_context(&self) -> Option<&Context> {
+        self.context
+            .iter()
+            .rev()
+            .find(|context| context.kind == ContextKind::Loop)
     }
 
     pub fn pop_context(&mut self) -> Result<(), CompilerError> {
         if let Some(context) = self.context.pop() {
-            self.place_label_here(context.label)?;
-            self.drop_label(&context.label);
+            self.place_label_here(context.start)?;
+            self.drop_label(&context.start);
             Ok(())
         } else {
             Err(CompilerError::AssignmentToConst)

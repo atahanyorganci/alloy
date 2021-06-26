@@ -18,16 +18,14 @@ pub struct WhileStatement {
 
 impl Compile for WhileStatement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let while_end = compiler.push_loop_context();
-        let while_start = compiler.make_label_now();
+        let context = compiler.push_loop_context();
 
         self.condition.compile(compiler)?;
-        compiler.emit_jump(Instruction::JumpIfFalse(0), &while_end)?;
+        compiler.emit_jump(Instruction::JumpIfFalse(0), &context.start_label())?;
         for statement in &self.body {
             statement.compile(compiler)?;
         }
-        compiler.emit(Instruction::Jump(while_start.target()));
-        compiler.drop_label(&while_start);
+        compiler.emit(Instruction::Jump(context.start_label().target()));
         compiler.pop_context()?;
         Ok(())
     }
