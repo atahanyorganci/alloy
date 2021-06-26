@@ -115,10 +115,11 @@ impl Compiler {
         label
     }
 
-    pub fn make_label_now(&mut self) -> (usize, Label) {
+    pub fn make_label_now(&mut self) -> Label {
         let target = self.instructions.len().try_into().unwrap();
-        let label = self.make_label();
-        (target, label)
+        let mut label = self.make_label();
+        label.set_target(target);
+        label
     }
 
     pub fn emit_jump(&mut self, jump: Instruction, label: &Label) -> Result<(), CompilerError> {
@@ -166,11 +167,16 @@ impl Compiler {
     }
 
     pub fn push_if_context(&mut self) -> Label {
+        self.push_context(ContextKind::If)
+    }
+
+    pub fn push_loop_context(&mut self) -> Label {
+        self.push_context(ContextKind::Loop)
+    }
+
+    fn push_context(&mut self, kind: ContextKind) -> Label {
         let label = self.make_label();
-        self.context.push(Context {
-            label: label.clone(),
-            kind: ContextKind::If,
-        });
+        self.context.push(Context { label, kind });
         label
     }
 
@@ -424,6 +430,7 @@ mod tests {
         assert!(compile("if true { const a = 0; } else if false { const b = 10; } else { const c = 20; } const d = 30;").is_ok());
         assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } const d = 30;").is_ok());
         assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } else { const d = 30; }").is_ok());
+        assert!(compile("while true { const x = 12; } const y = 12;").is_ok());
     }
 
     #[test]

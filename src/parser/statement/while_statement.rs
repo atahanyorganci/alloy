@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError},
+    compiler::{Compile, Compiler, CompilerError, Instruction},
     parser::{
         expression::build_expression, statement::build_statements, ASTNode, Expression, Rule,
         Statement,
@@ -17,8 +17,19 @@ pub struct WhileStatement {
 }
 
 impl Compile for WhileStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        let while_end = compiler.push_loop_context();
+        let while_start = compiler.make_label_now();
+
+        self.condition.compile(compiler)?;
+        compiler.emit_jump(Instruction::JumpIfFalse(0), &while_end)?;
+        for statement in &self.body {
+            statement.compile(compiler)?;
+        }
+        compiler.emit(Instruction::Jump(while_start.target()));
+        compiler.drop_label(&while_start);
+        compiler.pop_context()?;
+        Ok(())
     }
 }
 
