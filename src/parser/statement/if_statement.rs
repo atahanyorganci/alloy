@@ -28,16 +28,16 @@ impl Statement for IfStatement {
     fn eval(&self) {
         let condition = self.condition.eval();
         if condition.into() {
-            let statements: &Vec<_> = self.statements.borrow();
-            statements.iter().for_each(|statement| statement.eval());
+            self.statements
+                .iter()
+                .for_each(|statement| statement.eval());
         } else {
-            let statements: &Vec<_> = self.else_if_statements.borrow();
-            for else_if_statement in statements {
+            for else_if_statement in self.else_if_statements.iter() {
                 if else_if_statement.do_eval() {
                     return;
                 }
             }
-            match self.else_statement.borrow() {
+            match &self.else_statement {
                 Some(else_statement) => else_statement.eval(),
                 None => {}
             }
