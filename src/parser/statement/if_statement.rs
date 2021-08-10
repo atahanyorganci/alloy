@@ -40,7 +40,7 @@ impl Compile for IfStatement {
 
         // Apart from the else statement which implicitly exits IfStatement's instructions
         // Each of the conditonally executed statement block has to jump to the exit
-        compiler.emit_jump(Instruction::Jump(0), &context.end_label())?;
+        compiler.emit_jump(Instruction::Jump(0), context.end_label())?;
         compiler.place_label_here(if_body_end)?;
 
         // // If Else Bodies
@@ -131,7 +131,7 @@ impl IfStatement {
     }
 
     fn has_else_if(&self) -> bool {
-        self.else_if_statements.len() > 0
+        !self.else_if_statements.is_empty()
     }
 }
 
@@ -150,7 +150,7 @@ impl Compile for ElseIfStatement {
             statement.compile(compiler)?;
         }
         let context = compiler.get_context().unwrap();
-        let end_label = context.end_label().clone();
+        let end_label = *context.end_label();
         compiler.emit_jump(Instruction::Jump(0), &end_label)?;
 
         compiler.place_label_here(else_if_end)?;

@@ -20,11 +20,11 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn start_label<'a>(&'a self) -> &'a Label {
+    pub fn start_label(&self) -> &Label {
         &self.start
     }
 
-    pub fn end_label<'a>(&'a self) -> &'a Label {
+    pub fn end_label(&self) -> &Label {
         &self.end
     }
 }
@@ -60,7 +60,7 @@ impl fmt::Display for Compiler {
         for i in 0..len {
             write!(f, "[{:1$}]\t", i, width)?;
             self.display_instruction(f, i)?;
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -75,16 +75,16 @@ impl Compiler {
         self.instructions.push(insruction);
     }
 
-    pub fn get_identifer(&self, identifier: &String) -> Option<Symbol> {
+    pub fn get_identifer(&self, identifier: &str) -> Option<Symbol> {
         self.symbol_table.get_identifer_index(identifier)
     }
 
-    pub fn register_const(&mut self, identifier: &String) -> Result<u16, CompilerError> {
-        self.symbol_table.register_const(identifier.clone())
+    pub fn register_const(&mut self, identifier: &str) -> Result<u16, CompilerError> {
+        self.symbol_table.register_const(identifier.to_string())
     }
 
-    pub fn register_var(&mut self, identifier: &String) -> Result<u16, CompilerError> {
-        self.symbol_table.register_var(identifier.clone())
+    pub fn register_var(&mut self, identifier: &str) -> Result<u16, CompilerError> {
+        self.symbol_table.register_var(identifier.to_string())
     }
 
     pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
@@ -96,17 +96,17 @@ impl Compiler {
         match instruction {
             Instruction::StoreSymbol(index) => {
                 write!(f, "StoreSymbol\t")?;
-                let symbol = self.symbol_table.get_symbol((*index).into()).unwrap();
+                let symbol = self.symbol_table.get_symbol(*index).unwrap();
                 write!(f, "{} ({})", index, symbol)
             }
             Instruction::LoadSymbol(index) => {
                 write!(f, "LoadSymbol\t")?;
-                let symbol = self.symbol_table.get_symbol((*index).into()).unwrap();
+                let symbol = self.symbol_table.get_symbol(*index).unwrap();
                 write!(f, "{} ({})", index, symbol)
             }
             Instruction::LoadValue(index) => {
                 write!(f, "LoadValue\t")?;
-                let symbol = self.symbol_table.get_value((*index).into()).unwrap();
+                let symbol = self.symbol_table.get_value(*index).unwrap();
                 write!(f, "{} ({})", index, symbol)
             }
             _ => write!(f, "{:?}", instruction),
@@ -115,7 +115,7 @@ impl Compiler {
 
     pub fn make_label(&mut self) -> Label {
         let label: Label = self.label_count.into();
-        self.labels.insert(label.clone(), Vec::new());
+        self.labels.insert(label, Vec::new());
         self.label_count += 1;
         label
     }
@@ -183,7 +183,7 @@ impl Compiler {
         let start = self.make_label_now();
         let end = self.make_label();
         let context = Context { start, end, kind };
-        self.context.push(context.clone());
+        self.context.push(context);
         context
     }
 
@@ -237,15 +237,12 @@ impl SymbolTable {
         Self::default()
     }
 
-    pub fn is_identifier_taken(&self, identifier: &String) -> bool {
+    pub fn is_identifier_taken(&self, identifier: &str) -> bool {
         self.table.contains_key(identifier)
     }
 
-    pub fn get_identifer_index(&self, identifier: &String) -> Option<Symbol> {
-        match self.table.get(identifier) {
-            Some(&symbol) => Some(symbol),
-            None => None,
-        }
+    pub fn get_identifer_index(&self, identifier: &str) -> Option<Symbol> {
+        self.table.get(identifier).copied()
     }
 
     pub fn register_var(&mut self, identifier: String) -> Result<u16, CompilerError> {
@@ -282,7 +279,7 @@ impl SymbolTable {
         let count = self.table.len();
         match count.try_into() {
             Ok(index) => Ok(index),
-            Err(_) => return Err(CompilerError::VariableLimitReached),
+            Err(_) => Err(CompilerError::VariableLimitReached),
         }
     }
 
@@ -290,7 +287,7 @@ impl SymbolTable {
         let result = self
             .table
             .borrow()
-            .into_iter()
+            .iter()
             .find(|(_, symbol)| symbol.index == index);
 
         match result {

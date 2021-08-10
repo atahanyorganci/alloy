@@ -21,7 +21,7 @@ impl Compile for WhileStatement {
         let context = compiler.push_loop_context();
 
         self.condition.compile(compiler)?;
-        compiler.emit_jump(Instruction::JumpIfFalse(0), &context.start_label())?;
+        compiler.emit_jump(Instruction::JumpIfFalse(0), context.start_label())?;
         for statement in &self.body {
             statement.compile(compiler)?;
         }

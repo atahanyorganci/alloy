@@ -120,7 +120,7 @@ impl Compile for BreakStatement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         match compiler.get_loop_context() {
             Some(context) => {
-                let loop_end = context.end_label().clone();
+                let loop_end = *context.end_label();
                 compiler.emit_jump(Instruction::Jump(0), &loop_end)
             }
             None => Err(CompilerError::BreakOutsideLoop),
@@ -192,7 +192,7 @@ impl Compile for ContinueStatement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         match compiler.get_loop_context() {
             Some(context) => {
-                let loop_end = context.start_label().clone();
+                let loop_end = *context.start_label();
                 compiler.emit_jump(Instruction::Jump(0), &loop_end)
             }
             None => Err(CompilerError::BreakOutsideLoop),
@@ -213,7 +213,7 @@ impl ASTNode for ContinueStatement {
     {
         match pair.as_rule() {
             Rule::continue_statement => Some(Box::from(ContinueStatement {})),
-            _ => return None,
+            _ => None,
         }
     }
 }
