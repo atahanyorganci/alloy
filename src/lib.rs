@@ -6,4 +6,5 @@ extern crate lazy_static;
 extern crate structopt;
 
 pub mod compiler;
+pub mod object;
 pub mod parser;
