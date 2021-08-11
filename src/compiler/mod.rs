@@ -1,5 +1,4 @@
 use std::{
-    borrow::Borrow,
     collections::HashMap,
     convert::TryInto,
     fmt,
@@ -284,11 +283,7 @@ impl SymbolTable {
     }
 
     pub fn get_symbol(&self, index: u16) -> Option<&String> {
-        let result = self
-            .table
-            .borrow()
-            .iter()
-            .find(|(_, symbol)| symbol.index == index);
+        let result = self.table.iter().find(|(_, symbol)| symbol.index == index);
 
         match result {
             Some((identifier, _)) => Some(identifier),
@@ -448,6 +443,7 @@ mod tests {
         assert!(compile("while true { const x = 12; } const y = 12;").is_ok());
         assert!(compile("while true { print 12; break; } print 54;").is_ok());
         assert!(compile("while true { print 12; continue; } print 12;").is_ok());
+        assert!(compile("var count = 0; var first = 1; var second = 0; while count < 40 { print first; const temp = first; first = first + second; second = temp; } ").is_ok());
     }
 
     #[test]
