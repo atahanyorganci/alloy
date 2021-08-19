@@ -24,9 +24,9 @@ fn main() {
     loop {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
-            Ok(_) => {
+            Ok(count) => {
                 let trimmed = input.trim_end();
-                if trimmed == "exit" {
+                if count == 0 || trimmed == "exit" {
                     break;
                 }
                 let mut parsed = AlloyParser::parse(Rule::program, trimmed).unwrap();
