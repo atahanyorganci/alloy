@@ -7,7 +7,7 @@ use crate::{
     parser::{ASTNode, ParserError, Rule},
 };
 
-use self::{binary::BinaryExpression, identifier::Identifier, unary::UnaryExpression};
+use self::{binary::BinaryExpression, identifier::IdentifierExpression, unary::UnaryExpression};
 
 use super::value::Value;
 
@@ -20,7 +20,7 @@ pub enum Expression {
     Value(Value),
     Binary(BinaryExpression),
     Unary(UnaryExpression),
-    Identifier(Identifier),
+    Identifier(IdentifierExpression),
 }
 
 impl Compile for Expression {
@@ -52,8 +52,8 @@ impl From<UnaryExpression> for Expression {
     }
 }
 
-impl From<Identifier> for Expression {
-    fn from(identifier: Identifier) -> Self {
+impl From<IdentifierExpression> for Expression {
+    fn from(identifier: IdentifierExpression) -> Self {
         Self::Identifier(identifier)
     }
 }
@@ -67,7 +67,7 @@ impl ASTNode<'_> for Expression {
             Rule::unprecedent_unary_expression | Rule::precedent_unary_expression => {
                 UnaryExpression::build(inner_pair)?.into()
             }
-            Rule::identifier => Identifier::build(inner_pair)?.into(),
+            Rule::identifier => IdentifierExpression::build(inner_pair)?.into(),
             Rule::value => Value::build(inner_pair)?.into(),
             _ => unreachable!(),
         };

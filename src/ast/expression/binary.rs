@@ -11,7 +11,7 @@ use crate::{
     parser::{ASTNode, ParserError, Rule},
 };
 
-use super::{identifier::Identifier, Expression};
+use super::{identifier::IdentifierExpression, Expression};
 
 lazy_static! {
     static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
@@ -89,7 +89,7 @@ impl ASTNode<'_> for BinaryExpression {
                 match pair.as_rule() {
                     Rule::value => Value::build(pair).unwrap().into(),
                     Rule::expression => Expression::build(pair).unwrap(),
-                    Rule::identifier => Identifier::build(pair).unwrap().into(),
+                    Rule::identifier => IdentifierExpression::build(pair).unwrap().into(),
                     _ => unreachable!("{}", pair),
                 }
             },

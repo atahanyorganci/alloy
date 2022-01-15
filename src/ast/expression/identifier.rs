@@ -8,11 +8,11 @@ use crate::{
 };
 
 #[derive(PartialEq, Eq)]
-pub struct Identifier {
+pub struct IdentifierExpression {
     ident: String,
 }
 
-impl Compile for Identifier {
+impl Compile for IdentifierExpression {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         let instruction = match compiler.get_identifier(&self.ident) {
             Some((_, idx)) => Instruction::LoadSymbol(idx),
@@ -23,21 +23,21 @@ impl Compile for Identifier {
     }
 }
 
-impl ASTNode<'_> for Identifier {
+impl ASTNode<'_> for IdentifierExpression {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::identifier);
         let ident = String::from(pair.as_str());
-        Ok(Identifier { ident })
+        Ok(IdentifierExpression { ident })
     }
 }
 
-impl fmt::Debug for Identifier {
+impl fmt::Debug for IdentifierExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ident)
     }
 }
 
-impl fmt::Display for Identifier {
+impl fmt::Display for IdentifierExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ident)
     }
@@ -49,7 +49,7 @@ mod tests {
 
     use crate::parser::{ASTNode, AlloyParser, Rule};
 
-    use super::Identifier;
+    use super::IdentifierExpression;
 
     fn identifier_pair(input: &str) -> Option<Pair<Rule>> {
         match AlloyParser::parse(Rule::identifier, input) {
@@ -58,9 +58,9 @@ mod tests {
         }
     }
 
-    fn build_identifier_ast(input: &str) -> Result<Identifier, ()> {
+    fn build_identifier_ast(input: &str) -> Result<IdentifierExpression, ()> {
         match identifier_pair(input) {
-            Some(pair) => match Identifier::build(pair) {
+            Some(pair) => match IdentifierExpression::build(pair) {
                 Ok(identifier) => Ok(identifier),
                 Err(_) => Err(()),
             },
