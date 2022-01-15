@@ -4,6 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::{expression::Expression, statement::build_statements},
+    compiler::{Compile, Compiler, CompilerError},
     parser::{ASTNode, ParserError, Rule},
 };
 
@@ -17,44 +18,11 @@ pub struct IfStatement {
     else_statement: Option<ElseStatement>,
 }
 
-// impl Compile for IfStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         let context = compiler.push_if_context();
-//         let if_body_end = compiler.make_label();
-
-//         // If body
-//         self.condition.compile(compiler)?;
-//         compiler.emit_jump(Instruction::JumpIfFalse(0), &if_body_end)?;
-//         for statement in self.statements.iter() {
-//             statement.compile(compiler)?;
-//         }
-
-//         // If the statement doesn't have ElseStatement or ElseIfStatements then
-//         // we can place 'if_body_end' label and pop the if context.
-//         if !self.has_else() && !self.has_else_if() {
-//             compiler.place_label_here(if_body_end)?;
-//             compiler.drop_label(&if_body_end);
-//             return compiler.pop_context();
-//         }
-
-//         // Apart from the else statement which implicitly exits IfStatement's instructions
-//         // Each of the conditonally executed statement block has to jump to the exit
-//         compiler.emit_jump(Instruction::Jump(0), context.end_label())?;
-//         compiler.place_label_here(if_body_end)?;
-
-//         // // If Else Bodies
-//         for else_if in self.else_if_statements.iter() {
-//             else_if.compile(compiler)?;
-//         }
-
-//         match &self.else_statement {
-//             Some(else_statement) => else_statement.compile(compiler)?,
-//             None => {}
-//         }
-//         compiler.drop_label(&if_body_end);
-//         compiler.pop_context()
-//     }
-// }
+impl Compile for IfStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl ASTNode<'_> for IfStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
@@ -114,23 +82,11 @@ pub struct ElseIfStatement {
     statements: Vec<Statement>,
 }
 
-// impl Compile for ElseIfStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         self.condition.compile(compiler)?;
-//         let else_if_end = compiler.make_label();
-//         compiler.emit_jump(Instruction::JumpIfFalse(0), &else_if_end)?;
-//         for statement in self.statements.iter() {
-//             statement.compile(compiler)?;
-//         }
-//         let context = compiler.get_context().unwrap();
-//         let end_label = *context.end_label();
-//         compiler.emit_jump(Instruction::Jump(0), &end_label)?;
-
-//         compiler.place_label_here(else_if_end)?;
-//         compiler.drop_label(&else_if_end);
-//         Ok(())
-//     }
-// }
+impl Compile for ElseIfStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl ASTNode<'_> for ElseIfStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
@@ -164,14 +120,11 @@ pub struct ElseStatement {
     statements: Vec<Statement>,
 }
 
-// impl Compile for ElseStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         for statement in self.statements.iter() {
-//             statement.compile(compiler)?;
-//         }
-//         Ok(())
-//     }
-// }
+impl Compile for ElseStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl ASTNode<'_> for ElseStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {

@@ -4,6 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::{expression::Expression, statement::build_statements},
+    compiler::{Compile, Compiler, CompilerError},
     parser::{ASTNode, ParserError, Rule},
 };
 
@@ -15,20 +16,11 @@ pub struct WhileStatement {
     body: Vec<Statement>,
 }
 
-// impl Compile for WhileStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         let context = compiler.push_loop_context();
-
-//         self.condition.compile(compiler)?;
-//         compiler.emit_jump(Instruction::JumpIfFalse(0), context.start_label())?;
-//         for statement in &self.body {
-//             statement.compile(compiler)?;
-//         }
-//         compiler.emit(Instruction::Jump(context.start_label().target()));
-//         compiler.pop_context()?;
-//         Ok(())
-//     }
-// }
+impl Compile for WhileStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl ASTNode<'_> for WhileStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {

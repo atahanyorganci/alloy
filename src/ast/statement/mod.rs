@@ -95,22 +95,22 @@ impl From<ExpressionStatement> for Statement {
     }
 }
 
-// impl Compile for Statement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         match self {
-//             Statement::Print(s) => s.compile(compiler),
-//             Statement::Block(s) => s.compile(compiler),
-//             Statement::If(s) => s.compile(compiler),
-//             Statement::Declaration(s) => s.compile(compiler),
-//             Statement::Assignment(s) => s.compile(compiler),
-//             Statement::While(s) => s.compile(compiler),
-//             Statement::For(s) => s.compile(compiler),
-//             Statement::Continue(s) => s.compile(compiler),
-//             Statement::Break(s) => s.compile(compiler),
-//             Statement::Expression(s) => s.compile(compiler),
-//         }
-//     }
-// }
+impl Compile for Statement {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        match self {
+            Statement::Print(s) => s.compile(compiler),
+            Statement::Block(s) => s.compile(compiler),
+            Statement::If(s) => s.compile(compiler),
+            Statement::Declaration(s) => s.compile(compiler),
+            Statement::Assignment(s) => s.compile(compiler),
+            Statement::While(s) => s.compile(compiler),
+            Statement::For(s) => s.compile(compiler),
+            Statement::Continue(s) => s.compile(compiler),
+            Statement::Break(s) => s.compile(compiler),
+            Statement::Expression(s) => s.compile(compiler),
+        }
+    }
+}
 
 impl ASTNode<'_> for Statement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
@@ -155,6 +155,7 @@ pub struct PrintStatement {
 
 impl Compile for PrintStatement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.expression.compile(compiler)?;
         compiler.emit(Instruction::Display);
         Ok(())
     }
@@ -184,8 +185,11 @@ pub struct BlockStatement {
 }
 
 impl Compile for BlockStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        for statement in &self.body {
+            statement.compile(compiler)?;
+        }
+        Ok(())
     }
 }
 
@@ -240,13 +244,13 @@ pub struct ExpressionStatement {
     expression: Expression,
 }
 
-// impl Compile for ExpressionStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         self.expression.compile(compiler)?;
-//         compiler.emit(Instruction::Pop);
-//         Ok(())
-//     }
-// }
+impl Compile for ExpressionStatement {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.expression.compile(compiler)?;
+        compiler.emit(Instruction::Pop);
+        Ok(())
+    }
+}
 
 impl ASTNode<'_> for ExpressionStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {

@@ -4,6 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::expression::Expression,
+    compiler::{Compile, Compiler, CompilerError},
     parser::{ASTNode, ParserError, Rule},
 };
 
@@ -20,25 +21,11 @@ pub struct DeclarationStatement {
     kind: VariableKind,
 }
 
-// impl Compile for DeclarationStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         match &self.initial_value {
-//             Some(initial_value) => initial_value.compile(compiler)?,
-//             None => {}
-//         }
-//         let index = match self.kind {
-//             VariableKind::Constant => {
-//                 assert!(self.initial_value.is_some());
-//                 compiler.register_const(&self.identifier)?
-//             }
-//             VariableKind::Variable => compiler.register_var(&self.identifier)?,
-//         };
-//         if self.initial_value.is_some() {
-//             compiler.emit(Instruction::StoreSymbol(index));
-//         }
-//         Ok(())
-//     }
-// }
+impl Compile for DeclarationStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl ASTNode<'_> for DeclarationStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
@@ -83,20 +70,11 @@ pub struct AssignmentStatement {
     value: Expression,
 }
 
-// impl Compile for AssignmentStatement {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         let index = match compiler.get_identifer(&self.identifier) {
-//             Some(symbol) => match symbol.kind {
-//                 VariableKind::Constant => return Err(CompilerError::AssignmentToConst),
-//                 VariableKind::Variable => symbol.index,
-//             },
-//             None => return Err(CompilerError::UndefinedIdentifer),
-//         };
-//         self.value.compile(compiler)?;
-//         compiler.emit(Instruction::StoreSymbol(index));
-//         Ok(())
-//     }
-// }
+impl Compile for AssignmentStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
+    }
+}
 
 impl ASTNode<'_> for AssignmentStatement {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
