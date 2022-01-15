@@ -2,7 +2,10 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{ASTNode, ParserError, Rule};
+use crate::{
+    compiler::{Compile, Compiler, CompilerError},
+    parser::{ASTNode, ParserError, Rule},
+};
 
 use self::{binary::BinaryExpression, identifier::Identifier, unary::UnaryExpression};
 
@@ -18,6 +21,17 @@ pub enum Expression {
     Binary(BinaryExpression),
     Unary(UnaryExpression),
     Identifier(Identifier),
+}
+
+impl Compile for Expression {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        match self {
+            Expression::Value(expr) => expr.compile(compiler),
+            Expression::Binary(expr) => expr.compile(compiler),
+            Expression::Unary(expr) => expr.compile(compiler),
+            Expression::Identifier(expr) => expr.compile(compiler),
+        }
+    }
 }
 
 impl From<Value> for Expression {

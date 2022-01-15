@@ -2,7 +2,10 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{ASTNode, ParserError, Rule};
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{ASTNode, ParserError, Rule},
+};
 
 use super::Expression;
 
@@ -11,17 +14,17 @@ pub struct UnaryExpression {
     expression: Box<Expression>,
 }
 
-// impl Compile for UnaryExpression {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         self.expression.compile(compiler)?;
-//         match self.operator {
-//             UnaryOperator::Plus => {}
-//             UnaryOperator::Minus => compiler.emit(Instruction::UnaryMinus),
-//             UnaryOperator::Not => compiler.emit(Instruction::UnaryNot),
-//         }
-//         Ok(())
-//     }
-// }
+impl Compile for UnaryExpression {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.expression.compile(compiler)?;
+        match self.operator {
+            UnaryOperator::Plus => {}
+            UnaryOperator::Minus => compiler.emit(Instruction::UnaryMinus),
+            UnaryOperator::Not => compiler.emit(Instruction::UnaryNot),
+        }
+        Ok(())
+    }
+}
 
 impl ASTNode<'_> for UnaryExpression {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {

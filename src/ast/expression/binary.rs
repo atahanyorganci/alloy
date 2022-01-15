@@ -7,6 +7,7 @@ use pest::{
 
 use crate::{
     ast::value::Value,
+    compiler::{Compile, Compiler, CompilerError, Instruction},
     parser::{ASTNode, ParserError, Rule},
 };
 
@@ -49,31 +50,31 @@ impl fmt::Display for BinaryExpression {
     }
 }
 
-// impl Compile for BinaryExpression {
-//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-//         self.left.compile(compiler)?;
-//         self.right.compile(compiler)?;
-//         let instruction = match self.operator {
-//             BinaryOperator::Add => Instruction::BinaryAdd,
-//             BinaryOperator::Subtract => Instruction::BinarySubtract,
-//             BinaryOperator::Multiply => Instruction::BinaryMultiply,
-//             BinaryOperator::Divide => Instruction::BinaryDivide,
-//             BinaryOperator::Reminder => Instruction::BinaryReminder,
-//             BinaryOperator::Power => Instruction::BinaryPower,
-//             BinaryOperator::LessThan => Instruction::BinaryLessThan,
-//             BinaryOperator::LessThanEqual => Instruction::BinaryLessThanEqual,
-//             BinaryOperator::GreaterThan => Instruction::BinaryGreaterThan,
-//             BinaryOperator::GreaterThanEqual => Instruction::BinaryGreaterThanEqual,
-//             BinaryOperator::Equal => Instruction::BinaryEqual,
-//             BinaryOperator::NotEqual => Instruction::BinaryNotEqual,
-//             BinaryOperator::LogicalAnd => Instruction::BinaryLogicalAnd,
-//             BinaryOperator::LogicalOr => Instruction::BinaryLogicalOr,
-//             BinaryOperator::LogicalXor => Instruction::BinaryLogicalXor,
-//         };
-//         compiler.emit(instruction);
-//         Ok(())
-//     }
-// }
+impl Compile for BinaryExpression {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.left.compile(compiler)?;
+        self.right.compile(compiler)?;
+        let instruction = match self.operator {
+            BinaryOperator::Add => Instruction::BinaryAdd,
+            BinaryOperator::Subtract => Instruction::BinarySubtract,
+            BinaryOperator::Multiply => Instruction::BinaryMultiply,
+            BinaryOperator::Divide => Instruction::BinaryDivide,
+            BinaryOperator::Reminder => Instruction::BinaryReminder,
+            BinaryOperator::Power => Instruction::BinaryPower,
+            BinaryOperator::LessThan => Instruction::BinaryLessThan,
+            BinaryOperator::LessThanEqual => Instruction::BinaryLessThanEqual,
+            BinaryOperator::GreaterThan => Instruction::BinaryGreaterThan,
+            BinaryOperator::GreaterThanEqual => Instruction::BinaryGreaterThanEqual,
+            BinaryOperator::Equal => Instruction::BinaryEqual,
+            BinaryOperator::NotEqual => Instruction::BinaryNotEqual,
+            BinaryOperator::LogicalAnd => Instruction::BinaryLogicalAnd,
+            BinaryOperator::LogicalOr => Instruction::BinaryLogicalOr,
+            BinaryOperator::LogicalXor => Instruction::BinaryLogicalXor,
+        };
+        compiler.emit(instruction);
+        Ok(())
+    }
+}
 
 impl ASTNode<'_> for BinaryExpression {
     fn build(rule: Pair<'_, Rule>) -> Result<Self, ParserError> {
