@@ -7,7 +7,7 @@ use crate::{
 
 use pest::iterators::Pair;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Integer(i64),
     Float(f64),
@@ -46,7 +46,7 @@ impl From<f64> for Value {
 
 impl Compile for Value {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let index = compiler.register_value(*self)?;
+        let index = compiler.register_value(self.clone())?;
         compiler.emit(Instruction::LoadValue(index));
         Ok(())
     }
