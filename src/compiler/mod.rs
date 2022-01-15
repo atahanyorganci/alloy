@@ -7,6 +7,10 @@ use std::{
 
 use crate::ast::{value::Value, Identifier, IdentifierKind};
 
+use self::symbol_table::SymbolTable;
+
+pub mod symbol_table;
+
 pub trait Compile {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
 }
@@ -76,12 +80,12 @@ impl Compiler {
         self.instructions.push(insruction);
     }
 
-    pub fn register(&mut self, _identifier: Identifier) -> CompilerResult<u16> {
-        todo!()
+    pub fn register(&mut self, identifier: Identifier) -> CompilerResult<u16> {
+        self.symbol_table.register(identifier)
     }
 
-    pub fn get_identifier(&self, _ident: &str) -> Option<(IdentifierKind, u16)> {
-        todo!()
+    pub fn get_identifier(&self, ident: &str) -> Option<(IdentifierKind, u16)> {
+        self.symbol_table.get(ident)
     }
 
     pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
@@ -221,79 +225,6 @@ pub enum CompilerError {
     InvalidLabel,
     BreakOutsideLoop,
     ContinueOutsideLoop,
-}
-
-#[derive(Debug, Default)]
-pub struct SymbolTable {
-    table: HashMap<String, (IdentifierKind, u16)>,
-    values: HashMap<u16, Value>,
-}
-
-impl SymbolTable {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn is_identifier_taken(&self, identifier: &str) -> bool {
-        self.table.contains_key(identifier)
-    }
-
-    pub fn get_identifer_index(&self, identifier: &str) -> Option<(IdentifierKind, u16)> {
-        self.table.get(identifier).copied()
-    }
-
-    pub fn register_var(&mut self, identifier: String) -> Result<u16, CompilerError> {
-        if self.is_identifier_taken(&identifier) {
-            return Err(CompilerError::Redefinition);
-        }
-
-        let idx = self.get_next_identifier_index()?;
-        self.table
-            .insert(identifier, (IdentifierKind::Variable, idx));
-        Ok(idx)
-    }
-
-    pub fn register_const(&mut self, identifier: String) -> Result<u16, CompilerError> {
-        if self.is_identifier_taken(&identifier) {
-            return Err(CompilerError::Redefinition);
-        }
-
-        let idx = self.get_next_identifier_index()?;
-        self.table
-            .insert(identifier, (IdentifierKind::Constant, idx));
-        Ok(idx)
-    }
-
-    pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
-        let count = self.values.len();
-        let index: u16 = match count.try_into() {
-            Ok(index) => index,
-            Err(_) => return Err(CompilerError::ConstLimitReached),
-        };
-        self.values.insert(index, value);
-        Ok(index)
-    }
-
-    fn get_next_identifier_index(&self) -> Result<u16, CompilerError> {
-        let count = self.table.len();
-        match count.try_into() {
-            Ok(index) => Ok(index),
-            Err(_) => Err(CompilerError::VariableLimitReached),
-        }
-    }
-
-    pub fn get_symbol(&self, index: u16) -> Option<&String> {
-        let result = self.table.iter().find(|(_, (_, idx))| *idx == index);
-
-        match result {
-            Some((identifier, _)) => Some(identifier),
-            None => None,
-        }
-    }
-
-    pub fn get_value(&self, index: u16) -> Option<&Value> {
-        self.values.get(&index)
-    }
 }
 
 #[derive(Debug, Default, Clone, Copy)]
