@@ -32,6 +32,7 @@ lazy_static! {
     };
 }
 
+#[derive(PartialEq)]
 pub struct BinaryExpression {
     left: Box<Expression>,
     operator: BinaryOperator,
@@ -125,7 +126,7 @@ impl ASTNode<'_> for BinaryExpression {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOperator {
     Add,
     Subtract,

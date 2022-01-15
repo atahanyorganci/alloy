@@ -15,7 +15,7 @@ pub mod binary;
 pub mod identifier;
 pub mod unary;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Value(Value),
     Binary(BinaryExpression),

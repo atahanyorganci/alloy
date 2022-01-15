@@ -7,6 +7,7 @@ use crate::{
     parser::{ASTNode, ParserError, Rule},
 };
 
+#[derive(PartialEq, Eq)]
 pub struct Identifier {
     identifier: String,
 }

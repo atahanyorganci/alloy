@@ -9,6 +9,7 @@ use crate::{
 
 use super::Expression;
 
+#[derive(PartialEq)]
 pub struct UnaryExpression {
     operator: UnaryOperator,
     expression: Box<Expression>,
@@ -66,7 +67,7 @@ impl fmt::Display for UnaryExpression {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperator {
     Plus,
     Minus,
