@@ -1,6 +1,10 @@
-use crate::compiler::{Compiler, CompilerError, Instruction};
+use std::fmt;
 
-use super::*;
+use crate::{
+    compiler::{Compile, Compiler, CompilerError, Instruction},
+    parser::{ASTNode, ParserError, Rule},
+};
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -130,6 +134,8 @@ impl Value {
 
 #[cfg(test)]
 mod test {
+    use crate::parser::AlloyParser;
+
     use super::*;
     use pest::Parser;
 

@@ -3,8 +3,9 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
+    ast::{expression::Expression, statement::build_statements},
     compiler::{Compile, Compiler, CompilerError},
-    parser::{expression::Expression, statement::build_statements, ASTNode, ParserError, Rule},
+    parser::{ASTNode, ParserError, Rule},
 };
 
 use super::Statement;

@@ -5,7 +5,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::parser::{statement::declare_assign_statement::VariableKind, value::Value};
+use crate::ast::{statement::declare_assign_statement::VariableKind, value::Value};
 
 pub trait Compile {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;

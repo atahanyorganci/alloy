@@ -1,28 +1,32 @@
 use std::fmt;
 
-use pest::{iterators::Pair, prec_climber::*};
+use pest::{
+    iterators::Pair,
+    prec_climber::{Assoc, Operator, PrecClimber},
+};
 
-use crate::parser::{expression::identifier::Identifier, value::Value, ASTNode, ParserError, Rule};
+use crate::{
+    ast::value::Value,
+    parser::{ASTNode, ParserError, Rule},
+};
 
-use super::Expression;
+use super::{identifier::Identifier, Expression};
 
 lazy_static! {
     static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
-        use super::Rule::*;
-        use Assoc::*;
-
         PrecClimber::new(vec![
-            Operator::new(logical_xor, Left),
-            Operator::new(logical_or, Left),
-            Operator::new(logical_and, Left),
-            Operator::new(equal_to, Left) | Operator::new(not_equal_to, Left),
-            Operator::new(less_than, Left)
-                | Operator::new(greater_than, Left)
-                | Operator::new(less_than_eq, Left)
-                | Operator::new(greater_than_eq, Left),
-            Operator::new(add, Left) | Operator::new(subtract, Left),
-            Operator::new(multiply, Left) | Operator::new(divide, Left),
-            Operator::new(power, Right),
+            Operator::new(Rule::logical_xor, Assoc::Left),
+            Operator::new(Rule::logical_or, Assoc::Left),
+            Operator::new(Rule::logical_and, Assoc::Left),
+            Operator::new(Rule::equal_to, Assoc::Left)
+                | Operator::new(Rule::not_equal_to, Assoc::Left),
+            Operator::new(Rule::less_than, Assoc::Left)
+                | Operator::new(Rule::greater_than, Assoc::Left)
+                | Operator::new(Rule::less_than_eq, Assoc::Left)
+                | Operator::new(Rule::greater_than_eq, Assoc::Left),
+            Operator::new(Rule::add, Assoc::Left) | Operator::new(Rule::subtract, Assoc::Left),
+            Operator::new(Rule::multiply, Assoc::Left) | Operator::new(Rule::divide, Assoc::Left),
+            Operator::new(Rule::power, Assoc::Right),
         ])
     };
 }

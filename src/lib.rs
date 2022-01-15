@@ -5,6 +5,7 @@ extern crate pest_derive;
 extern crate lazy_static;
 extern crate structopt;
 
+pub mod ast;
 pub mod compiler;
 pub mod object;
 pub mod parser;

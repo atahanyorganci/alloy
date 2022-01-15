@@ -4,15 +4,17 @@ use pest::iterators::{Pair, Pairs};
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::statement::{
-        declare_assign_statement::{AssignmentStatement, DeclarationStatement},
-        for_statement::ForStatement,
-        if_statement::IfStatement,
-        while_statement::WhileStatement,
-    },
+    parser::{ASTNode, ParserError, Rule},
 };
 
-use super::{expression::Expression, ASTNode, ParserError, Rule};
+use self::{
+    declare_assign_statement::{AssignmentStatement, DeclarationStatement},
+    for_statement::ForStatement,
+    if_statement::IfStatement,
+    while_statement::WhileStatement,
+};
+
+use super::expression::Expression;
 
 pub mod declare_assign_statement;
 pub mod for_statement;

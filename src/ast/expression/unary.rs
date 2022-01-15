@@ -2,7 +2,9 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{expression::Expression, ASTNode, ParserError, Rule};
+use crate::parser::{ASTNode, ParserError, Rule};
+
+use super::Expression;
 
 pub struct UnaryExpression {
     operator: UnaryOperator,

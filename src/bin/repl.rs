@@ -1,6 +1,9 @@
 use std::io::{self, Write};
 
-use alloy::parser::{statement::build_statements, AlloyParser, Rule};
+use alloy::{
+    ast::statement::build_statements,
+    parser::{AlloyParser, Rule},
+};
 use pest::Parser;
 use structopt::StructOpt;
 

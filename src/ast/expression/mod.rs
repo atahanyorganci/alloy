@@ -2,11 +2,11 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::value::Value;
+use crate::parser::{ASTNode, ParserError, Rule};
 
 use self::{binary::BinaryExpression, identifier::Identifier, unary::UnaryExpression};
 
-use super::{ASTNode, ParserError, Rule};
+use super::value::Value;
 
 pub mod binary;
 pub mod identifier;

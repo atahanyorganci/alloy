@@ -2,12 +2,6 @@ use std::fmt;
 
 use pest::{iterators::Pair, Parser};
 
-use crate::compiler::Compile;
-
-pub mod expression;
-pub mod statement;
-pub mod value;
-
 #[derive(Parser)]
 #[grammar = "parser/alloy.pest"]
 pub struct AlloyParser;

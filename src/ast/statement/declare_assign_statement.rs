@@ -2,7 +2,10 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{expression::Expression, ASTNode, ParserError, Rule};
+use crate::{
+    ast::expression::Expression,
+    parser::{ASTNode, ParserError, Rule},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum VariableKind {

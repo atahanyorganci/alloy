@@ -2,8 +2,9 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::parser::{
-    expression::Expression, statement::build_statements, ASTNode, ParserError, Rule,
+use crate::{
+    ast::{expression::Expression, statement::build_statements},
+    parser::{ASTNode, ParserError, Rule},
 };
 
 use super::Statement;
