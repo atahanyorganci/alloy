@@ -215,14 +215,8 @@ impl fmt::Display for BlockStatement {
 pub struct BreakStatement;
 
 impl Compile for BreakStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        match compiler.get_loop_context() {
-            Some(context) => {
-                let loop_end = *context.end_label();
-                compiler.emit_jump(Instruction::Jump(0), &loop_end)
-            }
-            None => Err(CompilerError::BreakOutsideLoop),
-        }
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
     }
 }
 
@@ -272,14 +266,8 @@ impl fmt::Display for ExpressionStatement {
 pub struct ContinueStatement;
 
 impl Compile for ContinueStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        match compiler.get_loop_context() {
-            Some(context) => {
-                let loop_end = *context.start_label();
-                compiler.emit_jump(Instruction::Jump(0), &loop_end)
-            }
-            None => Err(CompilerError::BreakOutsideLoop),
-        }
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+        todo!()
     }
 }
 

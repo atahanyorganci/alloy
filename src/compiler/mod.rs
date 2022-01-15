@@ -1,10 +1,3 @@
-use std::{
-    collections::HashMap,
-    convert::TryInto,
-    fmt,
-    hash::{Hash, Hasher},
-};
-
 use crate::ast::{value::Value, Identifier, IdentifierKind};
 
 use self::symbol_table::SymbolTable;
@@ -15,60 +8,12 @@ pub trait Compile {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
 }
 
-#[derive(Debug, Hash, Clone, Copy)]
-pub struct Context {
-    kind: ContextKind,
-    start: Label,
-    end: Label,
-}
-
-impl Context {
-    pub fn start_label(&self) -> &Label {
-        &self.start
-    }
-
-    pub fn end_label(&self) -> &Label {
-        &self.end
-    }
-}
-
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
-pub enum ContextKind {
-    If,
-    Loop,
-}
-
 type CompilerResult<T> = Result<T, CompilerError>;
 
 #[derive(Debug, Default)]
 pub struct Compiler {
     symbol_table: SymbolTable,
     instructions: Vec<Instruction>,
-    labels: HashMap<Label, Vec<usize>>,
-    label_count: usize,
-    context: Vec<Context>,
-}
-
-fn get_width(mut len: usize) -> usize {
-    let mut width = 0;
-    while len > 0 {
-        len /= 10;
-        width += 1;
-    }
-    width
-}
-
-impl fmt::Display for Compiler {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let len = self.instructions.len();
-        let width = get_width(len);
-        for i in 0..len {
-            write!(f, "[{:1$}]\t", i, width)?;
-            self.display_instruction(f, i)?;
-            writeln!(f)?;
-        }
-        Ok(())
-    }
 }
 
 impl Compiler {
@@ -91,127 +36,6 @@ impl Compiler {
     pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
         self.symbol_table.register_value(value)
     }
-
-    fn display_instruction(&self, f: &mut fmt::Formatter<'_>, index: usize) -> fmt::Result {
-        let instruction = self.instructions.get(index).unwrap();
-        match instruction {
-            Instruction::StoreSymbol(index) => {
-                write!(f, "StoreSymbol\t")?;
-                let symbol = self.symbol_table.get_symbol(*index).unwrap();
-                write!(f, "{} ({})", index, symbol)
-            }
-            Instruction::LoadSymbol(index) => {
-                write!(f, "LoadSymbol\t")?;
-                let symbol = self.symbol_table.get_symbol(*index).unwrap();
-                write!(f, "{} ({})", index, symbol)
-            }
-            Instruction::LoadValue(index) => {
-                write!(f, "LoadValue\t")?;
-                let symbol = self.symbol_table.get_value(*index).unwrap();
-                write!(f, "{} ({})", index, symbol)
-            }
-            _ => write!(f, "{:?}", instruction),
-        }
-    }
-
-    pub fn make_label(&mut self) -> Label {
-        let label: Label = self.label_count.into();
-        self.labels.insert(label, Vec::new());
-        self.label_count += 1;
-        label
-    }
-
-    pub fn make_label_now(&mut self) -> Label {
-        let target = self.instructions.len().try_into().unwrap();
-        let mut label = self.make_label();
-        label.set_target(target);
-        label
-    }
-
-    pub fn emit_jump(&mut self, jump: Instruction, label: &Label) -> Result<(), CompilerError> {
-        match jump {
-            Instruction::Jump(_) | Instruction::JumpIfTrue(_) | Instruction::JumpIfFalse(_) => {}
-            _ => return Err(CompilerError::InvalidInstruction),
-        }
-        match self.labels.get_mut(label) {
-            Some(labels) => {
-                let instruction_index = self.instructions.len();
-                labels.push(instruction_index);
-                self.instructions.push(jump);
-                Ok(())
-            }
-            None => Err(CompilerError::InvalidLabel),
-        }
-    }
-
-    pub fn place_label(&mut self, label: &Label) -> Result<(), CompilerError> {
-        let target = match label.target {
-            Some(target) => target,
-            None => return Err(CompilerError::InvalidLabel),
-        };
-        let indexes = match self.labels.get(label) {
-            Some(indexes) => indexes,
-            None => return Err(CompilerError::InvalidLabel),
-        };
-        for index in indexes {
-            let instruction = self.instructions.get(*index).unwrap();
-            let patched = match instruction {
-                Instruction::Jump(_) => Instruction::Jump(target),
-                Instruction::JumpIfTrue(_) => Instruction::JumpIfTrue(target),
-                Instruction::JumpIfFalse(_) => Instruction::JumpIfFalse(target),
-                _ => return Err(CompilerError::InvalidInstruction),
-            };
-            self.instructions[*index] = patched;
-        }
-        Ok(())
-    }
-
-    pub fn place_label_here(&mut self, mut label: Label) -> Result<(), CompilerError> {
-        let target = self.instructions.len().try_into().unwrap();
-        label.set_target(target);
-        self.place_label(&label)
-    }
-
-    pub fn push_if_context(&mut self) -> Context {
-        self.push_context(ContextKind::If)
-    }
-
-    pub fn push_loop_context(&mut self) -> Context {
-        self.push_context(ContextKind::Loop)
-    }
-
-    fn push_context(&mut self, kind: ContextKind) -> Context {
-        let start = self.make_label_now();
-        let end = self.make_label();
-        let context = Context { start, end, kind };
-        self.context.push(context);
-        context
-    }
-
-    pub fn get_context(&self) -> Option<&Context> {
-        self.context.last()
-    }
-
-    pub fn get_loop_context(&self) -> Option<&Context> {
-        self.context
-            .iter()
-            .rev()
-            .find(|context| context.kind == ContextKind::Loop)
-    }
-
-    pub fn pop_context(&mut self) -> Result<(), CompilerError> {
-        if let Some(context) = self.context.pop() {
-            self.place_label_here(context.start)?;
-            self.drop_label(&context.start);
-            Ok(())
-        } else {
-            Err(CompilerError::AssignmentToConst)
-        }
-    }
-
-    pub fn drop_label(&mut self, label: &Label) {
-        self.labels.remove(label);
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -225,55 +49,6 @@ pub enum CompilerError {
     InvalidLabel,
     BreakOutsideLoop,
     ContinueOutsideLoop,
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Label {
-    count: usize,
-    target: Option<u16>,
-}
-
-impl Label {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn has_target(&self) -> bool {
-        self.target.is_some()
-    }
-
-    pub fn target(&self) -> u16 {
-        self.target.unwrap()
-    }
-
-    pub fn set_target(&mut self, target: u16) {
-        self.target = Some(target);
-    }
-}
-
-impl PartialEq for Label {
-    fn eq(&self, other: &Self) -> bool {
-        self.count == other.count
-    }
-}
-
-impl Eq for Label {
-    fn assert_receiver_is_total_eq(&self) {}
-}
-
-impl Hash for Label {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write_usize(self.count);
-    }
-}
-
-impl From<usize> for Label {
-    fn from(count: usize) -> Self {
-        Self {
-            count,
-            target: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -311,26 +86,10 @@ pub enum Instruction {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::{hash_map::DefaultHasher, HashMap},
-        hash::{Hash, Hasher},
-    };
-
     use super::CompilerError;
-    use crate::compiler::Label;
 
     fn compile(_input: &str) -> Result<(), CompilerError> {
         todo!()
-        // let statements = AlloyParser::parse(Rule::program, input).unwrap();
-        // let mut compiler = Compiler::new();
-        // for statement in statements {
-        //     match statement.as_rule() {
-        //         Rule::EOI => break,
-        //         _ => build_statement(statement).compile(&mut compiler)?,
-        //     }
-        // }
-        // println!("{}", compiler);
-        // Ok(())
     }
 
     #[test]
@@ -357,41 +116,5 @@ mod tests {
         assert!(compile("const x = 5; var x = 5;").is_err());
         assert!(compile("const x = x;").is_err());
         assert!(compile("var x = x;").is_err());
-    }
-
-    #[test]
-    fn test_label_equality() {
-        let first = Label::new();
-        let mut second = Label::new();
-        second.set_target(124);
-        assert_eq!(first, second)
-    }
-
-    #[test]
-    fn test_label_hash() {
-        let first = Label::new();
-        let mut second = Label::new();
-        second.set_target(124);
-
-        let mut hasher = DefaultHasher::new();
-        first.hash(&mut hasher);
-        let first_hash = hasher.finish();
-
-        hasher = DefaultHasher::new();
-        second.hash(&mut hasher);
-        let second_hash = hasher.finish();
-
-        assert_eq!(first_hash, second_hash);
-    }
-
-    #[test]
-    fn test_label_as_key() {
-        let first = Label::new();
-        let mut second = Label::new();
-        second.set_target(124);
-
-        let mut map = HashMap::new();
-        map.insert(first, 1);
-        assert!(map.contains_key(&second));
     }
 }
