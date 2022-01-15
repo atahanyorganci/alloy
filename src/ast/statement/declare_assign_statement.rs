@@ -132,10 +132,11 @@ mod test {
     }
 
     #[test]
-    fn test_assignment_statement() {
-        build_assignment("myVar = 120;");
-        build_assignment("myVar = true;");
-        build_assignment("myVar = 12 * 12 - 12;");
+    fn test_assignment_statement() -> Result<(), ParserError> {
+        build_assignment("myVar = 120;")?;
+        build_assignment("myVar = true;")?;
+        build_assignment("myVar = 12 * 12 - 12;")?;
+        Ok(())
     }
 
     #[test]

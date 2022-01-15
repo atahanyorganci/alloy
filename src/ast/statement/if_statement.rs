@@ -166,14 +166,15 @@ mod test {
     }
 
     #[test]
-    fn test_if_statement() {
-        build_if_statement("if true {}");
-        build_if_statement("if false { print 2; }");
-        build_if_statement("if false {} else if true {}");
-        build_if_statement("if false {} else if true {} else if true {}");
-        build_if_statement("if false {} else if true {} else if true {} else if true {} ");
-        build_if_statement("if false {} else if true {} else {}");
-        build_if_statement("if false {} else {}");
+    fn test_if_statement() -> Result<(), ParserError> {
+        build_if_statement("if true {}")?;
+        build_if_statement("if false { print 2; }")?;
+        build_if_statement("if false {} else if true {}")?;
+        build_if_statement("if false {} else if true {} else if true {}")?;
+        build_if_statement("if false {} else if true {} else if true {} else if true {} ")?;
+        build_if_statement("if false {} else if true {} else {}")?;
+        build_if_statement("if false {} else {}")?;
+        Ok(())
     }
 
     #[test]
