@@ -5,7 +5,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::ast::{statement::declare_assign_statement::VariableKind, value::Value};
+use crate::ast::{value::Value, Identifier, IdentifierKind};
 
 pub trait Compile {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
@@ -33,6 +33,8 @@ pub enum ContextKind {
     If,
     Loop,
 }
+
+type CompilerResult<T> = Result<T, CompilerError>;
 
 #[derive(Debug, Default)]
 pub struct Compiler {
@@ -74,16 +76,12 @@ impl Compiler {
         self.instructions.push(insruction);
     }
 
-    pub fn get_identifer(&self, identifier: &str) -> Option<Symbol> {
-        self.symbol_table.get_identifer_index(identifier)
+    pub fn register(&mut self, _identifier: Identifier) -> CompilerResult<u16> {
+        todo!()
     }
 
-    pub fn register_const(&mut self, identifier: &str) -> Result<u16, CompilerError> {
-        self.symbol_table.register_const(identifier.to_string())
-    }
-
-    pub fn register_var(&mut self, identifier: &str) -> Result<u16, CompilerError> {
-        self.symbol_table.register_var(identifier.to_string())
+    pub fn get_identifier(&self, _ident: &str) -> Option<(IdentifierKind, u16)> {
+        todo!()
     }
 
     pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
@@ -227,7 +225,7 @@ pub enum CompilerError {
 
 #[derive(Debug, Default)]
 pub struct SymbolTable {
-    table: HashMap<String, Symbol>,
+    table: HashMap<String, (IdentifierKind, u16)>,
     values: HashMap<u16, Value>,
 }
 
@@ -240,7 +238,7 @@ impl SymbolTable {
         self.table.contains_key(identifier)
     }
 
-    pub fn get_identifer_index(&self, identifier: &str) -> Option<Symbol> {
+    pub fn get_identifer_index(&self, identifier: &str) -> Option<(IdentifierKind, u16)> {
         self.table.get(identifier).copied()
     }
 
@@ -249,9 +247,10 @@ impl SymbolTable {
             return Err(CompilerError::Redefinition);
         }
 
-        let index = self.get_next_identifier_index()?;
-        self.table.insert(identifier, Symbol::variable(index));
-        Ok(index)
+        let idx = self.get_next_identifier_index()?;
+        self.table
+            .insert(identifier, (IdentifierKind::Variable, idx));
+        Ok(idx)
     }
 
     pub fn register_const(&mut self, identifier: String) -> Result<u16, CompilerError> {
@@ -259,9 +258,10 @@ impl SymbolTable {
             return Err(CompilerError::Redefinition);
         }
 
-        let index = self.get_next_identifier_index()?;
-        self.table.insert(identifier, Symbol::constant(index));
-        Ok(index)
+        let idx = self.get_next_identifier_index()?;
+        self.table
+            .insert(identifier, (IdentifierKind::Constant, idx));
+        Ok(idx)
     }
 
     pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
@@ -283,7 +283,7 @@ impl SymbolTable {
     }
 
     pub fn get_symbol(&self, index: u16) -> Option<&String> {
-        let result = self.table.iter().find(|(_, symbol)| symbol.index == index);
+        let result = self.table.iter().find(|(_, (_, idx))| *idx == index);
 
         match result {
             Some((identifier, _)) => Some(identifier),
@@ -293,28 +293,6 @@ impl SymbolTable {
 
     pub fn get_value(&self, index: u16) -> Option<&Value> {
         self.values.get(&index)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Symbol {
-    pub index: u16,
-    pub kind: VariableKind,
-}
-
-impl Symbol {
-    pub fn variable(index: u16) -> Self {
-        Self {
-            index,
-            kind: VariableKind::Variable,
-        }
-    }
-
-    pub fn constant(index: u16) -> Self {
-        Self {
-            index,
-            kind: VariableKind::Constant,
-        }
     }
 }
 

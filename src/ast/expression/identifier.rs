@@ -14,8 +14,8 @@ pub struct Identifier {
 
 impl Compile for Identifier {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let instruction = match compiler.get_identifer(&self.ident) {
-            Some(symbol) => Instruction::LoadSymbol(symbol.index),
+        let instruction = match compiler.get_identifier(&self.ident) {
+            Some((_, idx)) => Instruction::LoadSymbol(idx),
             None => return Err(CompilerError::UndefinedIdentifer),
         };
         compiler.emit(instruction);

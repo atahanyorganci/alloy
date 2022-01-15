@@ -3,27 +3,25 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    ast::expression::Expression,
-    compiler::{Compile, Compiler, CompilerError},
+    ast::{expression::Expression, Identifier, IdentifierKind},
+    compiler::{Compile, Compiler, CompilerError, Instruction},
     parser::{ASTNode, ParserError, Rule},
 };
 
-#[derive(Debug, Clone, Copy)]
-pub enum VariableKind {
-    Constant,
-    Variable,
-}
-
 #[derive(Debug)]
 pub struct DeclarationStatement {
-    identifier: String,
+    identifier: Identifier,
     initial_value: Option<Expression>,
-    kind: VariableKind,
 }
 
 impl Compile for DeclarationStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        let idx = compiler.register(self.identifier.clone())?;
+        if let Some(expr) = &self.initial_value {
+            expr.compile(compiler)?;
+            compiler.emit(Instruction::StoreSymbol(idx));
+        }
+        Ok(())
     }
 }
 
@@ -32,16 +30,19 @@ impl ASTNode<'_> for DeclarationStatement {
         matches!(pair.as_rule(), Rule::declaration_statement);
         let mut inner = pair.into_inner();
 
-        let modifier_keyword = inner.next().unwrap();
-        let modifier = match modifier_keyword.as_rule() {
-            Rule::k_const => VariableKind::Constant,
-            Rule::k_var => VariableKind::Variable,
+        let kind_keyword = inner.next().unwrap();
+        let kind = match kind_keyword.as_rule() {
+            Rule::k_const => IdentifierKind::Constant,
+            Rule::k_var => IdentifierKind::Variable,
             _ => unreachable!(),
         };
 
-        let identifier_token = inner.next().unwrap();
-        let identifier = match identifier_token.as_rule() {
-            Rule::identifier => String::from(identifier_token.as_str()),
+        let ident_token = inner.next().unwrap();
+        let identifier = match ident_token.as_rule() {
+            Rule::identifier => {
+                let ident = String::from(ident_token.as_str());
+                Identifier { ident, kind }
+            }
             _ => unreachable!(),
         };
 
@@ -53,7 +54,6 @@ impl ASTNode<'_> for DeclarationStatement {
         Ok(DeclarationStatement {
             identifier,
             initial_value,
-            kind: modifier,
         })
     }
 }
@@ -71,8 +71,16 @@ pub struct AssignmentStatement {
 }
 
 impl Compile for AssignmentStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        match compiler.get_identifier(&self.identifier) {
+            Some((IdentifierKind::Variable, idx)) => {
+                self.value.compile(compiler)?;
+                compiler.emit(Instruction::StoreSymbol(idx));
+                Ok(())
+            }
+            Some((IdentifierKind::Constant, _)) => Err(CompilerError::AssignmentToConst),
+            None => Err(CompilerError::UndefinedIdentifer),
+        }
     }
 }
 
