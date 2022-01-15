@@ -40,12 +40,6 @@ impl From<f64> for Value {
     }
 }
 
-impl Expression for Value {
-    fn eval(&self) -> Value {
-        *self
-    }
-}
-
 impl Compile for Value {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         let index = compiler.register_value(*self)?;
@@ -54,15 +48,10 @@ impl Compile for Value {
     }
 }
 
-impl ASTNode for Value {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
-        let value = match pair.as_rule() {
-            Rule::value => pair.into_inner().next().unwrap(),
-            _ => return None,
-        };
+impl ASTNode<'_> for Value {
+    fn build(rule: Pair<'_, Rule>) -> Result<Self, ParserError> {
+        matches!(rule.as_rule(), Rule::value);
+        let value = rule.into_inner().next().unwrap();
         let result = match value.as_rule() {
             Rule::integer => Value::parse_integer(value).unwrap(),
             Rule::float => Value::parse_float(value).unwrap(),
@@ -78,14 +67,21 @@ impl ASTNode for Value {
             }
             _ => unreachable!(),
         };
-        Some(Box::from(result))
+        Ok(result)
     }
 }
 
 impl Value {
     fn parse_float(pair: Pair<Rule>) -> Result<Self, ParseValueError> {
         matches!(pair.as_rule(), Rule::float);
-        let float = Value::parse_float_from_str(pair.as_str())?;
+        let float = {
+            let float = pair.as_str();
+            let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
+            match replaced.parse::<f64>() {
+                Ok(float) => Ok(float),
+                Err(_) => unreachable!(),
+            }
+        }?;
         Ok(Value::Float(float))
     }
 
@@ -110,15 +106,15 @@ impl Value {
 
     fn parse_unsigned_integer(pair: Pair<Rule>) -> Result<i64, ParseValueError> {
         match pair.as_rule() {
-            Rule::binary => Value::parse_integer_from_str(pair.as_str(), 2),
-            Rule::octal => Value::parse_integer_from_str(pair.as_str(), 8),
-            Rule::decimal => Value::parse_integer_from_str(pair.as_str(), 10),
-            Rule::hexadecimal => Value::parse_integer_from_str(pair.as_str(), 16),
+            Rule::binary => Value::parse_integer_with_radix(pair.as_str(), 2),
+            Rule::octal => Value::parse_integer_with_radix(pair.as_str(), 8),
+            Rule::decimal => Value::parse_integer_with_radix(pair.as_str(), 10),
+            Rule::hexadecimal => Value::parse_integer_with_radix(pair.as_str(), 16),
             _ => unreachable!(),
         }
     }
 
-    fn parse_integer_from_str(integer: &str, radix: u32) -> Result<i64, ParseValueError> {
+    fn parse_integer_with_radix(integer: &str, radix: u32) -> Result<i64, ParseValueError> {
         let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
         let source = match radix {
             2 | 8 | 16 => &replaced.as_str()[2..],
@@ -128,14 +124,6 @@ impl Value {
         match i64::from_str_radix(source, radix) {
             Ok(integer) => Ok(integer),
             Err(_) => Err(ParseValueError::IntegerOverflow),
-        }
-    }
-
-    fn parse_float_from_str(float: &str) -> Result<f64, ParseValueError> {
-        let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
-        match replaced.parse::<f64>() {
-            Ok(float) => Ok(float),
-            Err(_) => unreachable!(),
         }
     }
 }
@@ -149,14 +137,14 @@ mod test {
         let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
         let pair = tokens.next().unwrap();
         let integer = Value::build(pair).unwrap();
-        assert_eq!(*integer, number.into());
+        assert_eq!(integer, number.into());
     }
 
     fn test_float(string: &str, number: f64) {
         let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
         let pair = tokens.next().unwrap();
         let float = Value::build(pair).unwrap();
-        assert_eq!(*float, number.into());
+        assert_eq!(float, number.into());
     }
 
     #[test]
@@ -195,7 +183,8 @@ mod test {
 
     #[test]
     fn overflow_test() {
-        assert!(Value::parse_integer_from_str("1_000_000_000_000", 10).is_err());
+        let num = "1_000_000_000_000_000_000_000_000_000_000";
+        assert!(Value::parse_integer_with_radix(num, 10).is_err());
     }
 
     #[test]

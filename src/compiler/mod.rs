@@ -407,26 +407,21 @@ mod tests {
         hash::{Hash, Hasher},
     };
 
-    use pest::Parser;
+    use super::CompilerError;
+    use crate::compiler::Label;
 
-    use crate::{
-        compiler::Label,
-        parser::{statement::build_statement, AlloyParser, Rule},
-    };
-
-    use super::{Compiler, CompilerError};
-
-    fn compile(input: &str) -> Result<(), CompilerError> {
-        let statements = AlloyParser::parse(Rule::program, input).unwrap();
-        let mut compiler = Compiler::new();
-        for statement in statements {
-            match statement.as_rule() {
-                Rule::EOI => break,
-                _ => build_statement(statement).compile(&mut compiler)?,
-            }
-        }
-        println!("{}", compiler);
-        Ok(())
+    fn compile(_input: &str) -> Result<(), CompilerError> {
+        todo!()
+        // let statements = AlloyParser::parse(Rule::program, input).unwrap();
+        // let mut compiler = Compiler::new();
+        // for statement in statements {
+        //     match statement.as_rule() {
+        //         Rule::EOI => break,
+        //         _ => build_statement(statement).compile(&mut compiler)?,
+        //     }
+        // }
+        // println!("{}", compiler);
+        // Ok(())
     }
 
     #[test]

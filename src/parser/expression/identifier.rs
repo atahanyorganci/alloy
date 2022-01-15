@@ -4,14 +4,14 @@ use pest::iterators::Pair;
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{value::Value, ASTNode, Expression, Rule},
+    parser::{ASTNode, ParserError, Rule},
 };
 
-pub struct IdentifierExpression {
+pub struct Identifier {
     identifier: String,
 }
 
-impl Compile for IdentifierExpression {
+impl Compile for Identifier {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         let instruction = match compiler.get_identifer(&self.identifier) {
             Some(symbol) => Instruction::LoadSymbol(symbol.index),
@@ -22,33 +22,21 @@ impl Compile for IdentifierExpression {
     }
 }
 
-impl Expression for IdentifierExpression {
-    fn eval(&self) -> Value {
-        todo!()
+impl ASTNode<'_> for Identifier {
+    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+        matches!(pair.as_rule(), Rule::identifier);
+        let identifier = String::from(pair.as_str());
+        Ok(Identifier { identifier })
     }
 }
 
-impl ASTNode for IdentifierExpression {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
-        match pair.as_rule() {
-            Rule::identifier => Some(Box::from(IdentifierExpression {
-                identifier: String::from(pair.as_str()),
-            })),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Debug for IdentifierExpression {
+impl fmt::Debug for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.identifier)
     }
 }
 
-impl fmt::Display for IdentifierExpression {
+impl fmt::Display for Identifier {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }

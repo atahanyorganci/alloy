@@ -2,61 +2,46 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{
-        expression::build_expression, statement::build_statements, ASTNode, Expression, Rule,
-        Statement,
-    },
+use crate::parser::{
+    expression::Expression, statement::build_statements, ASTNode, ParserError, Rule,
 };
+
+use super::Statement;
 
 #[derive(Debug)]
 pub struct WhileStatement {
-    condition: Box<dyn Expression>,
-    body: Vec<Box<dyn Statement>>,
+    condition: Box<Expression>,
+    body: Vec<Statement>,
 }
 
-impl Compile for WhileStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let context = compiler.push_loop_context();
+// impl Compile for WhileStatement {
+//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+//         let context = compiler.push_loop_context();
 
-        self.condition.compile(compiler)?;
-        compiler.emit_jump(Instruction::JumpIfFalse(0), context.start_label())?;
-        for statement in &self.body {
-            statement.compile(compiler)?;
-        }
-        compiler.emit(Instruction::Jump(context.start_label().target()));
-        compiler.pop_context()?;
-        Ok(())
-    }
-}
+//         self.condition.compile(compiler)?;
+//         compiler.emit_jump(Instruction::JumpIfFalse(0), context.start_label())?;
+//         for statement in &self.body {
+//             statement.compile(compiler)?;
+//         }
+//         compiler.emit(Instruction::Jump(context.start_label().target()));
+//         compiler.pop_context()?;
+//         Ok(())
+//     }
+// }
 
-impl Statement for WhileStatement {
-    fn eval(&self) {
-        todo!()
-    }
-}
+impl ASTNode<'_> for WhileStatement {
+    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+        matches!(pair.as_rule(), Rule::while_statement);
+        let mut inner = pair.into_inner();
 
-impl ASTNode for WhileStatement {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
-        let mut inner = match pair.as_rule() {
-            Rule::while_statement => pair.into_inner(),
-            _ => return None,
-        };
-
-        let k_while = inner.next().unwrap().as_rule();
-        debug_assert_eq!(k_while, Rule::k_while);
-
+        matches!(inner.next().unwrap().as_rule(), Rule::k_while);
         let expression = inner.next().unwrap();
-        let condition = build_expression(expression).unwrap();
+        let condition = Box::from(Expression::build(expression)?);
 
         let mut statement_pairs = inner.next().unwrap().into_inner();
-        let body = build_statements(&mut statement_pairs);
+        let body = build_statements(&mut statement_pairs)?;
 
-        Some(Box::from(WhileStatement { condition, body }))
+        Ok(WhileStatement { condition, body })
     }
 }
 
@@ -70,7 +55,7 @@ impl fmt::Display for WhileStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, Rule};
+    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
 
     use super::WhileStatement;
 
@@ -81,16 +66,17 @@ mod test {
         }
     }
 
-    fn build_while_statement(input: &str) -> Box<WhileStatement> {
+    fn build(input: &str) -> Result<WhileStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        WhileStatement::build(pair).unwrap()
+        WhileStatement::build(pair)
     }
 
     #[test]
-    fn test_while_statement() {
-        build_while_statement("while true {}");
-        build_while_statement("while true { print 4; }");
-        build_while_statement("while true { print 4; print 2; }");
+    fn test_while_statement() -> Result<(), ParserError> {
+        build("while true {}")?;
+        build("while true { print 4; }")?;
+        build("while true { print 4; print 2; }")?;
+        Ok(())
     }
 
     #[test]

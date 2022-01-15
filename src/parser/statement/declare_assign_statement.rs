@@ -2,10 +2,7 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{expression::build_expression, ASTNode, Expression, Rule, Statement},
-};
+use crate::parser::{expression::Expression, ASTNode, ParserError, Rule};
 
 #[derive(Debug, Clone, Copy)]
 pub enum VariableKind {
@@ -16,45 +13,34 @@ pub enum VariableKind {
 #[derive(Debug)]
 pub struct DeclarationStatement {
     identifier: String,
-    initial_value: Option<Box<dyn Expression>>,
+    initial_value: Option<Expression>,
     kind: VariableKind,
 }
 
-impl Statement for DeclarationStatement {
-    fn eval(&self) {
-        todo!()
-    }
-}
+// impl Compile for DeclarationStatement {
+//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+//         match &self.initial_value {
+//             Some(initial_value) => initial_value.compile(compiler)?,
+//             None => {}
+//         }
+//         let index = match self.kind {
+//             VariableKind::Constant => {
+//                 assert!(self.initial_value.is_some());
+//                 compiler.register_const(&self.identifier)?
+//             }
+//             VariableKind::Variable => compiler.register_var(&self.identifier)?,
+//         };
+//         if self.initial_value.is_some() {
+//             compiler.emit(Instruction::StoreSymbol(index));
+//         }
+//         Ok(())
+//     }
+// }
 
-impl Compile for DeclarationStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        match &self.initial_value {
-            Some(initial_value) => initial_value.compile(compiler)?,
-            None => {}
-        }
-        let index = match self.kind {
-            VariableKind::Constant => {
-                assert!(self.initial_value.is_some());
-                compiler.register_const(&self.identifier)?
-            }
-            VariableKind::Variable => compiler.register_var(&self.identifier)?,
-        };
-        if self.initial_value.is_some() {
-            compiler.emit(Instruction::StoreSymbol(index));
-        }
-        Ok(())
-    }
-}
-
-impl ASTNode for DeclarationStatement {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
-        let mut inner = match pair.as_rule() {
-            Rule::declaration_statement => pair.into_inner(),
-            _ => return None,
-        };
+impl ASTNode<'_> for DeclarationStatement {
+    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+        matches!(pair.as_rule(), Rule::declaration_statement);
+        let mut inner = pair.into_inner();
 
         let modifier_keyword = inner.next().unwrap();
         let modifier = match modifier_keyword.as_rule() {
@@ -70,15 +56,15 @@ impl ASTNode for DeclarationStatement {
         };
 
         let initial_value = match inner.next() {
-            Some(token) => build_expression(token),
+            Some(token) => Some(Expression::build(token)?),
             None => None,
         };
 
-        Some(Box::from(DeclarationStatement {
+        Ok(DeclarationStatement {
             identifier,
             initial_value,
             kind: modifier,
-        }))
+        })
     }
 }
 
@@ -91,50 +77,37 @@ impl fmt::Display for DeclarationStatement {
 #[derive(Debug)]
 pub struct AssignmentStatement {
     identifier: String,
-    value: Box<dyn Expression>,
+    value: Expression,
 }
 
-impl Compile for AssignmentStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let index = match compiler.get_identifer(&self.identifier) {
-            Some(symbol) => match symbol.kind {
-                VariableKind::Constant => return Err(CompilerError::AssignmentToConst),
-                VariableKind::Variable => symbol.index,
-            },
-            None => return Err(CompilerError::UndefinedIdentifer),
-        };
-        self.value.compile(compiler)?;
-        compiler.emit(Instruction::StoreSymbol(index));
-        Ok(())
-    }
-}
+// impl Compile for AssignmentStatement {
+//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+//         let index = match compiler.get_identifer(&self.identifier) {
+//             Some(symbol) => match symbol.kind {
+//                 VariableKind::Constant => return Err(CompilerError::AssignmentToConst),
+//                 VariableKind::Variable => symbol.index,
+//             },
+//             None => return Err(CompilerError::UndefinedIdentifer),
+//         };
+//         self.value.compile(compiler)?;
+//         compiler.emit(Instruction::StoreSymbol(index));
+//         Ok(())
+//     }
+// }
 
-impl Statement for AssignmentStatement {
-    fn eval(&self) {
-        todo!()
-    }
-}
-
-impl ASTNode for AssignmentStatement {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
-        let mut inner = match pair.as_rule() {
-            Rule::assignment_statement => pair.into_inner(),
-            _ => return None,
-        };
+impl ASTNode<'_> for AssignmentStatement {
+    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+        matches!(pair.as_rule(), Rule::assignment_statement);
+        let mut inner = pair.into_inner();
 
         let identifier_token = inner.next().unwrap();
-        let identifier = match identifier_token.as_rule() {
-            Rule::identifier => String::from(identifier_token.as_str()),
-            _ => unreachable!(),
-        };
+        matches!(identifier_token.as_rule(), Rule::identifier);
+        let identifier = String::from(identifier_token.as_str());
 
         let expression = inner.next().unwrap();
-        let value = build_expression(expression).unwrap();
+        let value = Expression::build(expression)?;
 
-        Some(Box::from(AssignmentStatement { identifier, value }))
+        Ok(AssignmentStatement { identifier, value })
     }
 }
 
@@ -148,7 +121,7 @@ impl fmt::Display for AssignmentStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, Rule};
+    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
 
     use super::{AssignmentStatement, DeclarationStatement};
 
@@ -159,28 +132,29 @@ mod test {
         }
     }
 
-    fn build_declaration_statement(input: &str) -> Box<DeclarationStatement> {
+    fn build_declaration(input: &str) -> Result<DeclarationStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        DeclarationStatement::build(pair).unwrap()
+        DeclarationStatement::build(pair)
     }
 
     #[test]
-    fn test_declaration_statement() {
-        build_declaration_statement("var myVar;");
-        build_declaration_statement("var myVar = 2;");
-        build_declaration_statement("const myConst = 2;");
+    fn test_declaration_statement() -> Result<(), ParserError> {
+        build_declaration("var myVar;")?;
+        build_declaration("var myVar = 2;")?;
+        build_declaration("const myConst = 2;")?;
+        Ok(())
     }
 
-    fn build_assignment_statement(input: &str) -> Box<AssignmentStatement> {
+    fn build_assignment(input: &str) -> Result<AssignmentStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        AssignmentStatement::build(pair).unwrap()
+        AssignmentStatement::build(pair)
     }
 
     #[test]
     fn test_assignment_statement() {
-        build_assignment_statement("myVar = 120;");
-        build_assignment_statement("myVar = true;");
-        build_assignment_statement("myVar = 12 * 12 - 12;");
+        build_assignment("myVar = 120;");
+        build_assignment("myVar = true;");
+        build_assignment("myVar = 12 * 12 - 12;");
     }
 
     #[test]

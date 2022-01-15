@@ -1,10 +1,8 @@
 use std::fmt;
 
-use pest::iterators::Pair;
+use pest::{iterators::Pair, Parser};
 
 use crate::compiler::Compile;
-
-use self::value::Value;
 
 pub mod expression;
 pub mod statement;
@@ -14,16 +12,16 @@ pub mod value;
 #[grammar = "parser/alloy.pest"]
 pub struct AlloyParser;
 
-pub trait Expression: ASTNode {
-    fn eval(&self) -> Value;
+#[derive(Debug)]
+pub enum ParserError {}
+
+pub trait ASTNode<'a>: fmt::Debug + fmt::Display + Sized {
+    fn build(pair: Pair<'a, Rule>) -> Result<Self, ParserError>;
 }
 
-pub trait Statement: ASTNode {
-    fn eval(&self);
-}
-
-pub trait ASTNode: fmt::Debug + fmt::Display + Compile {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized;
+pub fn parse(input: &str) {
+    match AlloyParser::parse(Rule::statements, input) {
+        Ok(_) => todo!(),
+        Err(_) => todo!(),
+    }
 }

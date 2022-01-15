@@ -2,44 +2,32 @@ use std::fmt;
 
 use pest::iterators::Pair;
 
-use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{expression::build_expression, value::Value, ASTNode, Expression, Rule},
-};
+use crate::parser::{expression::Expression, ASTNode, ParserError, Rule};
 
 pub struct UnaryExpression {
     operator: UnaryOperator,
-    expression: Box<dyn Expression>,
+    expression: Box<Expression>,
 }
 
-impl Expression for UnaryExpression {
-    fn eval(&self) -> Value {
-        todo!()
-    }
-}
+// impl Compile for UnaryExpression {
+//     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+//         self.expression.compile(compiler)?;
+//         match self.operator {
+//             UnaryOperator::Plus => {}
+//             UnaryOperator::Minus => compiler.emit(Instruction::UnaryMinus),
+//             UnaryOperator::Not => compiler.emit(Instruction::UnaryNot),
+//         }
+//         Ok(())
+//     }
+// }
 
-impl Compile for UnaryExpression {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        self.expression.compile(compiler)?;
-        match self.operator {
-            UnaryOperator::Plus => {}
-            UnaryOperator::Minus => compiler.emit(Instruction::UnaryMinus),
-            UnaryOperator::Not => compiler.emit(Instruction::UnaryNot),
-        }
-        Ok(())
-    }
-}
-
-impl ASTNode for UnaryExpression {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
+impl ASTNode<'_> for UnaryExpression {
+    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         let mut inner = match pair.as_rule() {
             Rule::unprecedent_unary_expression | Rule::precedent_unary_expression => {
                 pair.into_inner()
             }
-            _ => return None,
+            _ => unreachable!(),
         };
         let operator = match inner.next().unwrap().as_rule() {
             Rule::not => UnaryOperator::Not,
@@ -47,17 +35,23 @@ impl ASTNode for UnaryExpression {
             Rule::plus => UnaryOperator::Plus,
             _ => unreachable!(),
         };
-        let expression = build_expression(inner.next().unwrap()).unwrap();
-        Some(Box::from(Self {
+        let expression = Expression::build(inner.next().unwrap())?;
+        let expression = Box::from(expression);
+        Ok(Self {
             operator,
             expression,
-        }))
+        })
     }
 }
 
 impl fmt::Debug for UnaryExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}{:?})", self.operator, self.expression)
+        match self.operator {
+            UnaryOperator::Plus | UnaryOperator::Minus => {
+                write!(f, "({}{:?})", self.operator, self.expression)
+            }
+            UnaryOperator::Not => write!(f, "({} {:?})", self.operator, self.expression),
+        }
     }
 }
 
@@ -85,7 +79,7 @@ impl fmt::Display for UnaryOperator {
         match self {
             UnaryOperator::Plus => write!(f, "+"),
             UnaryOperator::Minus => write!(f, "-"),
-            UnaryOperator::Not => write!(f, "not "),
+            UnaryOperator::Not => write!(f, "not"),
         }
     }
 }

@@ -10,10 +10,6 @@ struct Opt {
     /// Verbose mode
     #[structopt(short, long)]
     verbose: bool,
-
-    /// If set AST will not be evaluated
-    #[structopt(long)]
-    no_eval: bool,
 }
 
 fn main() {
@@ -33,11 +29,13 @@ fn main() {
                 if opt.verbose {
                     println!("{}", parsed);
                 }
-                if !opt.no_eval {
-                    let statements = build_statements(&mut parsed);
-                    for statement in statements {
-                        statement.eval();
+                match build_statements(&mut parsed) {
+                    Ok(statements) => {
+                        for statement in statements {
+                            println!("{:?}", statement)
+                        }
                     }
+                    Err(e) => eprintln!("{:?}", e),
                 }
             }
             Err(error) => println!("error: {}", error),
