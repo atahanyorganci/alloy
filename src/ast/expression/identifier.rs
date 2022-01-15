@@ -9,12 +9,12 @@ use crate::{
 
 #[derive(PartialEq, Eq)]
 pub struct Identifier {
-    identifier: String,
+    ident: String,
 }
 
 impl Compile for Identifier {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let instruction = match compiler.get_identifer(&self.identifier) {
+        let instruction = match compiler.get_identifer(&self.ident) {
             Some(symbol) => Instruction::LoadSymbol(symbol.index),
             None => return Err(CompilerError::UndefinedIdentifer),
         };
@@ -26,20 +26,20 @@ impl Compile for Identifier {
 impl ASTNode<'_> for Identifier {
     fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::identifier);
-        let identifier = String::from(pair.as_str());
-        Ok(Identifier { identifier })
+        let ident = String::from(pair.as_str());
+        Ok(Identifier { ident })
     }
 }
 
 impl fmt::Debug for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.identifier)
+        write!(f, "{}", self.ident)
     }
 }
 
 impl fmt::Display for Identifier {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.ident)
     }
 }
 
@@ -47,7 +47,9 @@ impl fmt::Display for Identifier {
 mod tests {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{AlloyParser, Rule};
+    use crate::parser::{ASTNode, AlloyParser, Rule};
+
+    use super::Identifier;
 
     fn identifier_pair(input: &str) -> Option<Pair<Rule>> {
         match AlloyParser::parse(Rule::identifier, input) {
@@ -56,8 +58,41 @@ mod tests {
         }
     }
 
+    fn build_identifier_ast(input: &str) -> Result<Identifier, ()> {
+        match identifier_pair(input) {
+            Some(pair) => match Identifier::build(pair) {
+                Ok(identifier) => Ok(identifier),
+                Err(_) => Err(()),
+            },
+            None => Err(()),
+        }
+    }
+
     #[test]
-    fn test_wrong_identifiers() {
+    fn test_valid_identifiers() -> Result<(), ()> {
+        build_identifier_ast("abc")?;
+        build_identifier_ast("abc12")?;
+        build_identifier_ast("a12bc")?;
+        build_identifier_ast("Abc")?;
+        build_identifier_ast("ABC12")?;
+        build_identifier_ast("a12BC")?;
+        build_identifier_ast("abc_12")?;
+        build_identifier_ast("a_12bc")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_invalid_identifiers() {
+        assert!(build_identifier_ast("_abc").is_err());
+        assert!(build_identifier_ast("__abc").is_err());
+        assert!(build_identifier_ast("12abc").is_err());
+        assert!(build_identifier_ast("_12abc").is_err());
+        assert!(build_identifier_ast("1_abc").is_err());
+        assert!(build_identifier_ast("1_2abc").is_err());
+    }
+
+    #[test]
+    fn test_keywords_as_identifiers() {
         assert!(identifier_pair("if").is_none());
         assert!(identifier_pair("else").is_none());
         assert!(identifier_pair("print").is_none());
