@@ -12,7 +12,7 @@ use super::Statement;
 
 #[derive(Debug)]
 pub struct WhileStatement {
-    condition: Box<Expression>,
+    condition: Expression,
     body: Vec<Statement>,
 }
 
@@ -29,7 +29,7 @@ impl ASTNode<'_> for WhileStatement {
 
         matches!(inner.next().unwrap().as_rule(), Rule::k_while);
         let expression = inner.next().unwrap();
-        let condition = Box::from(Expression::build(expression)?);
+        let condition = Expression::build(expression)?;
 
         let mut statement_pairs = inner.next().unwrap().into_inner();
         let body = build_statements(&mut statement_pairs)?;
