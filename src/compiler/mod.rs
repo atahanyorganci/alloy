@@ -1,4 +1,4 @@
-use std::{fmt, mem};
+use std::{collections::HashMap, convert::TryInto, fmt, mem};
 
 use crate::ast::{value::Value, Identifier, IdentifierKind};
 
@@ -13,10 +13,56 @@ pub trait Compile {
 
 type CompilerResult<T> = Result<T, CompilerError>;
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum BlockType {
+    Block,
+    If,
+    For,
+    While,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
+pub struct Label(usize);
+
+impl Into<Label> for usize {
+    fn into(self) -> Label {
+        Label(self)
+    }
+}
+
+impl From<Label> for usize {
+    fn from(label: Label) -> Self {
+        label.0
+    }
+}
+
+impl Label {
+    pub fn target(self) -> Result<u16, CompilerError> {
+        if let Ok(t) = self.0.try_into() {
+            Ok(t)
+        } else {
+            Err(CompilerError::InstructionLimitReached)
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
+pub struct JumpRef {
+    idx: usize,
+}
+
+impl Into<usize> for JumpRef {
+    fn into(self) -> usize {
+        self.idx
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Compiler {
     symbol_table: SymbolTable,
     instructions: Vec<Instruction>,
+    blocks: Vec<BlockType>,
+    unplaced_labels: HashMap<usize, Vec<JumpRef>>,
 }
 
 impl Compiler {
@@ -51,17 +97,85 @@ impl Compiler {
             debug_symbols,
         )
     }
+
+    pub fn enter_block(&mut self, block_type: BlockType) {
+        self.blocks.push(block_type)
+    }
+
+    pub fn exit_block(&mut self) {
+        self.blocks.pop().unwrap();
+        let block_idx = self.blocks.len();
+        if let Some(registered) = self.unplaced_labels.remove(&block_idx) {
+            for jump in registered {
+                self.target_jump(jump);
+            }
+        }
+    }
+
+    pub fn emit_jump(&mut self, jump: Instruction) -> JumpRef {
+        match jump {
+            Instruction::Jump(_) | Instruction::JumpIfTrue(_) | Instruction::JumpIfFalse(_) => {
+                let idx = self.instructions.len();
+                self.instructions.push(jump);
+                JumpRef { idx }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn emit_untargeted_jump(&mut self) -> JumpRef {
+        self.emit_jump(Instruction::UNPLACED_JUMP)
+    }
+
+    pub fn emit_untargeted_jump_if_false(&mut self) -> JumpRef {
+        self.emit_jump(Instruction::UNPLACED_JUMP_IF_FALSE)
+    }
+
+    pub fn emit_untargeted_jump_if_true(&mut self) -> JumpRef {
+        self.emit_jump(Instruction::UNPLACED_JUMP_IF_TRUE)
+    }
+
+    pub fn place_label(&mut self) -> Label {
+        self.instructions.len().into()
+    }
+
+    pub fn target_jump(&mut self, jump: JumpRef) {
+        let idx: usize = jump.into();
+        let target = self.current();
+        let jump = match self.instructions[idx] {
+            Instruction::Jump(_) => Instruction::Jump(target),
+            Instruction::JumpIfTrue(_) => Instruction::JumpIfTrue(target),
+            Instruction::JumpIfFalse(_) => Instruction::JumpIfFalse(target),
+            _ => unreachable!(),
+        };
+        self.instructions[idx] = jump;
+    }
+
+    pub fn target_jump_on_exit(&mut self, block_type: BlockType, jump: JumpRef) {
+        for (i, current) in self.blocks.iter().enumerate().rev() {
+            if *current == block_type {
+                if let Some(vec) = self.unplaced_labels.get_mut(&i) {
+                    vec.push(jump);
+                } else {
+                    let labels = vec![jump];
+                    self.unplaced_labels.insert(i, labels);
+                }
+            }
+        }
+    }
+
+    fn current(&self) -> u16 {
+        self.instructions.len().try_into().unwrap()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum CompilerError {
     VariableLimitReached,
-    ConstLimitReached,
     Redefinition,
     UndefinedIdentifer,
     AssignmentToConst,
-    InvalidInstruction,
-    InvalidLabel,
+    InstructionLimitReached,
     BreakOutsideLoop,
     ContinueOutsideLoop,
 }
@@ -129,6 +243,12 @@ impl fmt::Display for Instruction {
             | Instruction::UnaryNot => write!(f, "{self:?}"),
         }
     }
+}
+
+impl Instruction {
+    const UNPLACED_JUMP: Instruction = Instruction::Jump(0);
+    const UNPLACED_JUMP_IF_TRUE: Instruction = Instruction::JumpIfTrue(0);
+    const UNPLACED_JUMP_IF_FALSE: Instruction = Instruction::JumpIfFalse(0);
 }
 
 #[cfg(test)]

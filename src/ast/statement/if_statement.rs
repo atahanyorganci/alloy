@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::{expression::Expression, statement::build_statements},
-    compiler::{Compile, Compiler, CompilerError},
+    compiler::{BlockType, Compile, Compiler, CompilerError},
     parser::{ASTNode, ParserError, Rule},
 };
 
@@ -13,6 +13,20 @@ use super::Statement;
 pub struct ConditionalStatement {
     condition: Expression,
     statements: Vec<Statement>,
+}
+
+impl Compile for ConditionalStatement {
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.condition.compile(compiler)?;
+        let condition_failed = compiler.emit_untargeted_jump();
+        for statement in &self.statements {
+            statement.compile(compiler)?;
+        }
+        let exit = compiler.emit_untargeted_jump();
+        compiler.target_jump_on_exit(BlockType::If, exit);
+        compiler.target_jump(condition_failed);
+        Ok(())
+    }
 }
 
 pub struct IfStatement {
@@ -83,8 +97,17 @@ impl ASTNode<'_> for IfStatement {
 }
 
 impl Compile for IfStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        compiler.enter_block(BlockType::If);
+        self.if_statement.compile(compiler)?;
+        for else_if_statement in &self.else_if_statements {
+            else_if_statement.compile(compiler)?;
+        }
+        if let Some(ref else_statement) = self.else_statement {
+            else_statement.compile(compiler)?;
+        }
+        compiler.exit_block();
+        Ok(())
     }
 }
 
@@ -137,8 +160,8 @@ impl ASTNode<'_> for ElseIfStatement {
 }
 
 impl Compile for ElseIfStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        self.0.compile(compiler)
     }
 }
 
@@ -167,8 +190,11 @@ impl ASTNode<'_> for ElseStatement {
 }
 
 impl Compile for ElseStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        for statement in &self.statements {
+            statement.compile(compiler)?;
+        }
+        Ok(())
     }
 }
 
