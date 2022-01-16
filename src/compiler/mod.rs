@@ -164,6 +164,21 @@ impl Compiler {
         }
     }
 
+    pub fn target_jump_on_loop_exit(&mut self, jump: JumpRef) -> Option<()> {
+        for (i, current) in self.blocks.iter().enumerate().rev() {
+            if *current == BlockType::While || *current == BlockType::For {
+                if let Some(vec) = self.unplaced_labels.get_mut(&i) {
+                    vec.push(jump);
+                } else {
+                    let labels = vec![jump];
+                    self.unplaced_labels.insert(i, labels);
+                }
+                return Some(());
+            }
+        }
+        None
+    }
+
     fn current(&self) -> u16 {
         self.instructions.len().try_into().unwrap()
     }

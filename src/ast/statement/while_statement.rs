@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::{expression::Expression, statement::build_statements},
-    compiler::{Compile, Compiler, CompilerError},
+    compiler::{BlockType, Compile, Compiler, CompilerError, Instruction},
     parser::{ASTNode, ParserError, Rule},
 };
 
@@ -17,8 +17,20 @@ pub struct WhileStatement {
 }
 
 impl Compile for WhileStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
-        todo!()
+    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        compiler.enter_block(BlockType::While);
+
+        let condition_label = compiler.place_label();
+        self.condition.compile(compiler)?;
+        let exit = compiler.emit_untargeted_jump_if_false();
+        compiler.target_jump_on_exit(BlockType::While, exit);
+
+        for statement in &self.body {
+            statement.compile(compiler)?;
+        }
+        compiler.emit(Instruction::Jump(condition_label.target()?));
+        compiler.exit_block();
+        Ok(())
     }
 }
 
