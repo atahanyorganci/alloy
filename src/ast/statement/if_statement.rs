@@ -12,7 +12,7 @@ use super::Statement;
 
 #[derive(Debug)]
 pub struct IfStatement {
-    condition: Box<Expression>,
+    condition: Expression,
     statements: Vec<Statement>,
     else_if_statements: Vec<ElseIfStatement>,
     else_statement: Option<ElseStatement>,
@@ -34,7 +34,7 @@ impl ASTNode<'_> for IfStatement {
         matches!(if_body.next().unwrap().as_rule(), Rule::k_if);
 
         let expression = if_body.next().unwrap();
-        let condition = Box::from(Expression::build(expression)?);
+        let condition = Expression::build(expression)?;
 
         let mut statement_pairs = if_body.next().unwrap().into_inner();
         let statements = build_statements(&mut statement_pairs)?;
