@@ -21,13 +21,13 @@ check:
     hash=$(git log "$remote" --oneline | awk '{ print $1 }' | head -n 1)
 
 
-    echo "Remote is at $hash. Checking each commit until the origin."
+    printf 'Remote is at %s. Checking each commit until the origin.\n' "$remote"
     hist=$(git log --oneline | awk '{print $1 }')
-    while IFS= read -r line; do
-        if [[ "$line" == "$hash" ]]; then
+    while IFS= read -r curr; do
+        if [[ "$curr" == "$hash" ]]; then
             echo "Sucessfully finished."
             exit 0
         fi
-        printf "Checking $line..."
+        printf 'Checking `%s`...' "$curr"
         cargo check -q 2> /dev/null || exit 1 && printf " done!\n"
     done <<< "$hist"
