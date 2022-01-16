@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::{collections::HashMap, convert::TryInto, mem};
 
 use crate::ast::{value::Value, Identifier, IdentifierKind};
 
@@ -70,5 +70,11 @@ impl SymbolTable {
 
     pub fn get_value(&self, index: u16) -> Option<&Value> {
         self.values.get(index as usize)
+    }
+
+    pub fn finish<'a>(&'a mut self) -> (Vec<Value>, Vec<&'a String>) {
+        let values = mem::take(&mut self.values);
+        let debug_symbols: Vec<_> = self.table.keys().collect();
+        (values, debug_symbols)
     }
 }

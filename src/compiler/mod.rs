@@ -1,9 +1,10 @@
-use std::fmt;
+use std::{fmt, mem};
 
 use crate::ast::{value::Value, Identifier, IdentifierKind};
 
-use self::symbol_table::SymbolTable;
+use self::{code_block::CodeBlock, symbol_table::SymbolTable};
 
+pub mod code_block;
 pub mod symbol_table;
 
 pub trait Compile {
@@ -37,6 +38,18 @@ impl Compiler {
 
     pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
         self.symbol_table.register_value(value)
+    }
+
+    pub fn finish<'a>(&'a mut self) -> (CodeBlock, Vec<&'a String>) {
+        let instructions = mem::take(&mut self.instructions);
+        let (values, debug_symbols) = self.symbol_table.finish();
+        (
+            CodeBlock {
+                instructions,
+                values,
+            },
+            debug_symbols,
+        )
     }
 }
 
