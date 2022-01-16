@@ -3,24 +3,18 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
+    ast::{expression::Expression, statement::build_statements},
     compiler::{Compile, Compiler, CompilerError},
-    parser::{
-        expression::build_expression, statement::build_statements, ASTNode, Expression, Rule,
-        Statement,
-    },
+    parser::{ASTNode, ParserError, Rule},
 };
+
+use super::Statement;
 
 #[derive(Debug)]
 pub struct ForStatement {
     identifier: String,
-    iterator: Box<dyn Expression>,
-    body: Vec<Box<dyn Statement>>,
-}
-
-impl Statement for ForStatement {
-    fn eval(&self) {
-        todo!()
-    }
+    iterator: Expression,
+    body: Vec<Statement>,
 }
 
 impl Compile for ForStatement {
@@ -29,18 +23,12 @@ impl Compile for ForStatement {
     }
 }
 
-impl ASTNode for ForStatement {
-    fn build(pair: Pair<Rule>) -> Option<Box<Self>>
-    where
-        Self: Sized,
-    {
-        let mut inner = match pair.as_rule() {
-            Rule::for_statement => pair.into_inner(),
-            _ => return None,
-        };
+impl ASTNode<'_> for ForStatement {
+    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+        matches!(pair.as_rule(), Rule::for_statement);
+        let mut inner = pair.into_inner();
 
-        let k_for = inner.next().unwrap().as_rule();
-        debug_assert_eq!(k_for, Rule::k_for);
+        matches!(inner.next().unwrap().as_rule(), Rule::k_for);
 
         let identifier_token = inner.next().unwrap();
         let identifier = match identifier_token.as_rule() {
@@ -48,20 +36,18 @@ impl ASTNode for ForStatement {
             _ => unreachable!(),
         };
 
-        let k_in = inner.next().unwrap().as_rule();
-        debug_assert_eq!(k_in, Rule::k_in);
-
+        matches!(inner.next().unwrap().as_rule(), Rule::k_in);
         let expression = inner.next().unwrap();
-        let iterator = build_expression(expression).unwrap();
+        let iterator = Expression::build(expression)?;
 
         let mut statement_pairs = inner.next().unwrap().into_inner();
-        let body = build_statements(&mut statement_pairs);
+        let body = build_statements(&mut statement_pairs)?;
 
-        Some(Box::from(ForStatement {
+        Ok(ForStatement {
             identifier,
             iterator,
             body,
-        }))
+        })
     }
 }
 
@@ -75,7 +61,7 @@ impl fmt::Display for ForStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, Rule};
+    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
 
     use super::ForStatement;
 
@@ -86,18 +72,19 @@ mod test {
         }
     }
 
-    fn build_for_statement(input: &str) -> Box<ForStatement> {
+    fn build_statement(input: &str) -> Result<ForStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        ForStatement::build(pair).unwrap()
+        ForStatement::build(pair)
     }
 
     #[test]
-    fn test_for_statement() {
-        build_for_statement("for i in 2 {}");
-        build_for_statement("for i in 2 { break; }");
-        build_for_statement("for i in 2 { continue; }");
-        build_for_statement("for i in 2 { print 4; }");
-        build_for_statement("for i in 2 { print 4; print 2; }");
+    fn test_for_statement() -> Result<(), ParserError> {
+        build_statement("for i in 2 {}")?;
+        build_statement("for i in 2 { break; }")?;
+        build_statement("for i in 2 { continue; }")?;
+        build_statement("for i in 2 { print 4; }")?;
+        build_statement("for i in 2 { print 4; print 2; }")?;
+        Ok(())
     }
 
     #[test]
