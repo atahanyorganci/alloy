@@ -10,16 +10,35 @@ use crate::{
 
 use super::Statement;
 
-#[derive(Debug)]
-pub struct IfStatement {
+pub struct ConditionalStatement {
     condition: Expression,
     statements: Vec<Statement>,
+}
+
+pub struct IfStatement {
+    if_statement: ConditionalStatement,
     else_if_statements: Vec<ElseIfStatement>,
     else_statement: Option<ElseStatement>,
 }
 
-impl Compile for IfStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+impl fmt::Debug for IfStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut debug = f.debug_struct("IfStatement");
+        debug
+            .field("condition", &self.if_statement.condition)
+            .field("body", &self.if_statement.statements);
+        if self.has_else_if() {
+            debug.field("else_if_statements", &self.else_if_statements);
+        }
+        if self.has_else() {
+            debug.field("else_statement", &self.else_statement);
+        }
+        debug.finish()
+    }
+}
+
+impl fmt::Display for IfStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
 }
@@ -38,6 +57,10 @@ impl ASTNode<'_> for IfStatement {
 
         let mut statement_pairs = if_body.next().unwrap().into_inner();
         let statements = build_statements(&mut statement_pairs)?;
+        let if_statement = ConditionalStatement {
+            condition,
+            statements,
+        };
 
         let mut else_if_statements = Vec::new();
         let mut else_statement = None;
@@ -52,16 +75,15 @@ impl ASTNode<'_> for IfStatement {
         }
 
         Ok(IfStatement {
-            condition,
-            statements,
+            if_statement,
             else_if_statements,
             else_statement,
         })
     }
 }
 
-impl fmt::Display for IfStatement {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Compile for IfStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
         todo!()
     }
 }
@@ -76,14 +98,19 @@ impl IfStatement {
     }
 }
 
-#[derive(Debug)]
-pub struct ElseIfStatement {
-    condition: Expression,
-    statements: Vec<Statement>,
+pub struct ElseIfStatement(ConditionalStatement);
+
+impl fmt::Debug for ElseIfStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ElseIfStatement")
+            .field("condition", &self.0.condition)
+            .field("body", &self.0.statements)
+            .finish()
+    }
 }
 
-impl Compile for ElseIfStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+impl fmt::Display for ElseIfStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
 }
@@ -102,15 +129,15 @@ impl ASTNode<'_> for ElseIfStatement {
         let mut statement_pairs = inner.next().unwrap().into_inner();
         let statements = build_statements(&mut statement_pairs)?;
 
-        Ok(ElseIfStatement {
+        Ok(ElseIfStatement(ConditionalStatement {
             condition,
             statements,
-        })
+        }))
     }
 }
 
-impl fmt::Display for ElseIfStatement {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Compile for ElseIfStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
         todo!()
     }
 }
@@ -120,8 +147,8 @@ pub struct ElseStatement {
     statements: Vec<Statement>,
 }
 
-impl Compile for ElseStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+impl fmt::Display for ElseStatement {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
 }
@@ -139,8 +166,8 @@ impl ASTNode<'_> for ElseStatement {
     }
 }
 
-impl fmt::Display for ElseStatement {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Compile for ElseStatement {
+    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
         todo!()
     }
 }
