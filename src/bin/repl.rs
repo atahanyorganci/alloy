@@ -1,7 +1,8 @@
 use std::io::{self, Write};
 
 use alloy::{
-    ast::statement::build_statements,
+    ast::statement::{build_statements, Statement},
+    compiler::{Compile, Compiler},
     parser::{AlloyParser, Rule},
 };
 use pest::Parser;
@@ -15,11 +16,25 @@ struct Opt {
     verbose: bool,
 }
 
+pub fn compile(compiler: &mut Compiler, statements: Vec<Statement>) {
+    for statement in statements {
+        println!("{:?}", statement);
+        if let Err(error) = statement.compile(compiler) {
+            eprintln!("{error:?}");
+            break;
+        }
+    }
+    let (code_block, debug_symbols) = compiler.finish();
+    let dis = code_block.disassemble(&debug_symbols);
+    println!("{dis}");
+}
+
 fn main() {
     let opt = Opt::from_args();
 
     println!("Alloylang REPL");
     inputline();
+    let mut compiler = Compiler::new();
     loop {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
@@ -33,11 +48,7 @@ fn main() {
                     println!("{}", parsed);
                 }
                 match build_statements(&mut parsed) {
-                    Ok(statements) => {
-                        for statement in statements {
-                            println!("{:?}", statement)
-                        }
-                    }
+                    Ok(statements) => compile(&mut compiler, statements),
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
