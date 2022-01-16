@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::ast::{value::Value, Identifier, IdentifierKind};
 
 use self::symbol_table::SymbolTable;
@@ -82,6 +84,38 @@ pub enum Instruction {
     // Unary Operators
     UnaryMinus,
     UnaryNot,
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Instruction::StoreSymbol(idx) => write!(f, "StoreSymbol({idx})"),
+            Instruction::LoadSymbol(idx) => write!(f, "LoadSymbol({idx})"),
+            Instruction::LoadValue(idx) => write!(f, "LoadValue({idx})"),
+            Instruction::Jump(idx) => write!(f, "Jump({idx})"),
+            Instruction::JumpIfTrue(idx) => write!(f, "JumpIfTrue({idx})"),
+            Instruction::JumpIfFalse(idx) => write!(f, "JumpIfFalse({idx})"),
+            Instruction::Pop
+            | Instruction::Display
+            | Instruction::BinaryAdd
+            | Instruction::BinarySubtract
+            | Instruction::BinaryMultiply
+            | Instruction::BinaryDivide
+            | Instruction::BinaryReminder
+            | Instruction::BinaryPower
+            | Instruction::BinaryLessThan
+            | Instruction::BinaryLessThanEqual
+            | Instruction::BinaryGreaterThan
+            | Instruction::BinaryGreaterThanEqual
+            | Instruction::BinaryEqual
+            | Instruction::BinaryNotEqual
+            | Instruction::BinaryLogicalAnd
+            | Instruction::BinaryLogicalOr
+            | Instruction::BinaryLogicalXor
+            | Instruction::UnaryMinus
+            | Instruction::UnaryNot => write!(f, "{self:?}"),
+        }
+    }
 }
 
 #[cfg(test)]
