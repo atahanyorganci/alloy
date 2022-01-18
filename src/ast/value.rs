@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{Parse, ParserError, Rule},
+    parser::{Parse, ParseResult, ParserError, Rule},
 };
 
 use pest::iterators::Pair;
@@ -13,12 +13,6 @@ pub enum Value {
     Float(f64),
     True,
     False,
-}
-
-#[derive(Debug)]
-pub enum ParseValueError {
-    InvalidRadix(u32),
-    IntegerOverflow,
 }
 
 impl fmt::Display for Value {
@@ -76,20 +70,17 @@ impl Parse<'_> for Value {
 }
 
 impl Value {
-    fn parse_float(pair: Pair<Rule>) -> Result<Self, ParseValueError> {
+    fn parse_float(pair: Pair<Rule>) -> ParseResult<Self> {
         matches!(pair.as_rule(), Rule::float);
-        let float = {
-            let float = pair.as_str();
-            let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
-            match replaced.parse::<f64>() {
-                Ok(float) => Ok(float),
-                Err(_) => unreachable!(),
-            }
-        }?;
-        Ok(Value::Float(float))
+        let float = pair.as_str();
+        let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
+        match replaced.parse::<f64>() {
+            Ok(float) => Ok(Value::Float(float)),
+            Err(e) => Err(e.into()),
+        }
     }
 
-    fn parse_integer(pair: Pair<Rule>) -> Result<Self, ParseValueError> {
+    fn parse_integer(pair: Pair<Rule>) -> ParseResult<Self> {
         matches!(pair.as_rule(), Rule::integer);
 
         let mut inner = pair.into_inner();
@@ -108,7 +99,7 @@ impl Value {
         Ok(Value::Integer(integer))
     }
 
-    fn parse_unsigned_integer(pair: Pair<Rule>) -> Result<i64, ParseValueError> {
+    fn parse_unsigned_integer(pair: Pair<Rule>) -> ParseResult<i64> {
         match pair.as_rule() {
             Rule::binary => Value::parse_integer_with_radix(pair.as_str(), 2),
             Rule::octal => Value::parse_integer_with_radix(pair.as_str(), 8),
@@ -118,17 +109,14 @@ impl Value {
         }
     }
 
-    fn parse_integer_with_radix(integer: &str, radix: u32) -> Result<i64, ParseValueError> {
+    fn parse_integer_with_radix(integer: &str, radix: u32) -> ParseResult<i64> {
         let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
         let source = match radix {
             2 | 8 | 16 => &replaced.as_str()[2..],
             10 => replaced.as_str(),
-            _ => return Err(ParseValueError::InvalidRadix(radix)),
+            _ => unreachable!(),
         };
-        match i64::from_str_radix(source, radix) {
-            Ok(integer) => Ok(integer),
-            Err(_) => Err(ParseValueError::IntegerOverflow),
-        }
+        i64::from_str_radix(source, radix).map_err(|e| e.into())
     }
 }
 

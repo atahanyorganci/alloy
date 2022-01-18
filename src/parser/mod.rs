@@ -1,7 +1,10 @@
+use std::num::{ParseFloatError, ParseIntError};
+
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
 };
+use thiserror::Error;
 
 use crate::ast::statement::Statement;
 
@@ -9,8 +12,15 @@ use crate::ast::statement::Statement;
 #[grammar = "parser/alloy.pest"]
 pub struct AlloyParser;
 
-#[derive(Debug)]
-pub enum ParserError {}
+#[derive(Error, Debug)]
+pub enum ParserError {
+    #[error(transparent)]
+    ParseIntError(#[from] ParseIntError),
+    #[error(transparent)]
+    ParseFloatError(#[from] ParseFloatError),
+}
+
+pub type ParseResult<T> = Result<T, ParserError>;
 
 pub trait Parse<'a>: Sized {
     fn parse(pair: Pair<'a, Rule>) -> Result<Self, ParserError>;
