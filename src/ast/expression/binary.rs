@@ -169,26 +169,22 @@ impl fmt::Display for BinaryOperator {
 
 #[cfg(test)]
 mod tests {
-    use pest::Parser;
-
-    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
+    use crate::parser::{parse_rule, ParserError, Rule};
 
     use super::BinaryExpression;
 
-    fn parse(input: &str) -> Result<(), ParserError> {
-        let mut tokens = AlloyParser::parse(Rule::binary_expression, input).unwrap();
-        BinaryExpression::parse(tokens.next().unwrap())?;
-        Ok(())
+    fn parse_binary(input: &str) -> Result<BinaryExpression, ParserError> {
+        parse_rule::<BinaryExpression>(Rule::binary_expression, input)
     }
 
     #[test]
     fn build_expression_test() -> Result<(), ParserError> {
-        parse("1 + 1")?;
-        parse("1 + 2 * 3")?;
-        parse("(1 + 2) * 3")?;
-        parse("1 - 1")?;
-        parse("1 + 2 + 3")?;
-        parse("(1 + 2) / 3")?;
+        parse_binary("1 + 1")?;
+        parse_binary("1 + 2 * 3")?;
+        parse_binary("(1 + 2) * 3")?;
+        parse_binary("1 - 1")?;
+        parse_binary("1 + 2 + 3")?;
+        parse_binary("(1 + 2) / 3")?;
         Ok(())
     }
 }

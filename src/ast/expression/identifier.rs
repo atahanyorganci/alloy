@@ -45,68 +45,53 @@ impl fmt::Display for IdentifierExpression {
 
 #[cfg(test)]
 mod tests {
-    use pest::{iterators::Pair, Parser};
-
-    use crate::parser::{AlloyParser, Parse, Rule};
+    use crate::parser::{parse_rule, ParseResult, Rule};
 
     use super::IdentifierExpression;
 
-    fn identifier_pair(input: &str) -> Option<Pair<Rule>> {
-        match AlloyParser::parse(Rule::identifier, input) {
-            Ok(mut pairs) => Some(pairs.next().unwrap()),
-            Err(_) => None,
-        }
-    }
-
-    fn build_identifier_ast(input: &str) -> Result<IdentifierExpression, ()> {
-        match identifier_pair(input) {
-            Some(pair) => match IdentifierExpression::parse(pair) {
-                Ok(identifier) => Ok(identifier),
-                Err(_) => Err(()),
-            },
-            None => Err(()),
-        }
+    fn parse_identifer(input: &str) -> ParseResult<IdentifierExpression> {
+        parse_rule::<IdentifierExpression>(Rule::identifier, input)
     }
 
     #[test]
-    fn test_valid_identifiers() -> Result<(), ()> {
-        build_identifier_ast("abc")?;
-        build_identifier_ast("abc12")?;
-        build_identifier_ast("a12bc")?;
-        build_identifier_ast("Abc")?;
-        build_identifier_ast("ABC12")?;
-        build_identifier_ast("a12BC")?;
-        build_identifier_ast("abc_12")?;
-        build_identifier_ast("a_12bc")?;
+    fn test_valid_identifiers() -> ParseResult<()> {
+        parse_identifer("abc")?;
+        parse_identifer("abc12")?;
+        parse_identifer("a12bc")?;
+        parse_identifer("Abc")?;
+        parse_identifer("ABC12")?;
+        parse_identifer("a12BC")?;
+        parse_identifer("abc_12")?;
+        parse_identifer("a_12bc")?;
         Ok(())
     }
 
     #[test]
     fn test_invalid_identifiers() {
-        assert!(build_identifier_ast("_abc").is_err());
-        assert!(build_identifier_ast("__abc").is_err());
-        assert!(build_identifier_ast("12abc").is_err());
-        assert!(build_identifier_ast("_12abc").is_err());
-        assert!(build_identifier_ast("1_abc").is_err());
-        assert!(build_identifier_ast("1_2abc").is_err());
+        parse_identifer("_abc").unwrap_err();
+        parse_identifer("__abc").unwrap_err();
+        parse_identifer("12abc").unwrap_err();
+        parse_identifer("_12abc").unwrap_err();
+        parse_identifer("1_abc").unwrap_err();
+        parse_identifer("1_2abc").unwrap_err();
     }
 
     #[test]
     fn test_keywords_as_identifiers() {
-        assert!(identifier_pair("if").is_none());
-        assert!(identifier_pair("else").is_none());
-        assert!(identifier_pair("print").is_none());
-        assert!(identifier_pair("while").is_none());
-        assert!(identifier_pair("for").is_none());
-        assert!(identifier_pair("return").is_none());
-        assert!(identifier_pair("var").is_none());
-        assert!(identifier_pair("const").is_none());
-        assert!(identifier_pair("and").is_none());
-        assert!(identifier_pair("or").is_none());
-        assert!(identifier_pair("not").is_none());
-        assert!(identifier_pair("xor").is_none());
-        assert!(identifier_pair("continue").is_none());
-        assert!(identifier_pair("break").is_none());
-        assert!(identifier_pair("in").is_none());
+        parse_identifer("if").unwrap_err();
+        parse_identifer("else").unwrap_err();
+        parse_identifer("print").unwrap_err();
+        parse_identifer("while").unwrap_err();
+        parse_identifer("for").unwrap_err();
+        parse_identifer("return").unwrap_err();
+        parse_identifer("var").unwrap_err();
+        parse_identifer("const").unwrap_err();
+        parse_identifer("and").unwrap_err();
+        parse_identifer("or").unwrap_err();
+        parse_identifer("not").unwrap_err();
+        parse_identifer("xor").unwrap_err();
+        parse_identifer("continue").unwrap_err();
+        parse_identifer("break").unwrap_err();
+        parse_identifer("in").unwrap_err();
     }
 }

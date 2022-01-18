@@ -18,12 +18,34 @@ pub enum ParserError {
     ParseIntError(#[from] ParseIntError),
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
+    #[error("WIP")]
+    WIP,
+}
+
+impl From<pest::error::Error<Rule>> for ParserError {
+    fn from(_: pest::error::Error<Rule>) -> Self {
+        ParserError::WIP
+    }
 }
 
 pub type ParseResult<T> = Result<T, ParserError>;
 
 pub trait Parse<'a>: Sized {
     fn parse(pair: Pair<'a, Rule>) -> Result<Self, ParserError>;
+}
+
+pub fn parse_rule<'a, T: Parse<'a>>(rule: Rule, input: &'a str) -> ParseResult<T> {
+    match AlloyParser::parse(rule, input) {
+        Ok(mut pairs) => T::parse(pairs.next().unwrap()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub fn parse_statement<'a, T: Parse<'a>>(input: &'a str) -> ParseResult<T> {
+    match AlloyParser::parse(Rule::program, input) {
+        Ok(mut pairs) => T::parse(pairs.next().unwrap()),
+        Err(e) => Err(e.into()),
+    }
 }
 
 pub fn parse_pairs(pairs: Pairs<Rule>) -> Result<Vec<Statement>, ParserError> {
@@ -45,6 +67,6 @@ pub fn parse_pairs(pairs: Pairs<Rule>) -> Result<Vec<Statement>, ParserError> {
 pub fn parse(input: &str) -> Result<Vec<Statement>, ParserError> {
     match AlloyParser::parse(Rule::program, input) {
         Ok(pairs) => parse_pairs(pairs),
-        Err(_) => todo!(),
+        Err(e) => Err(e.into()),
     }
 }

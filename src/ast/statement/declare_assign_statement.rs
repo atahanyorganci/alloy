@@ -111,53 +111,44 @@ impl fmt::Display for AssignmentStatement {
 
 #[cfg(test)]
 mod test {
-    use pest::{iterators::Pair, Parser};
-
-    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
+    use crate::parser::{self, ParseResult};
 
     use super::{AssignmentStatement, DeclarationStatement};
 
-    fn statement_pair(input: &str) -> Option<Pair<Rule>> {
-        match AlloyParser::parse(Rule::program, input) {
-            Ok(mut pairs) => Some(pairs.next().unwrap()),
-            Err(_) => None,
-        }
-    }
-
-    fn build_declaration(input: &str) -> Result<DeclarationStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        DeclarationStatement::parse(pair)
-    }
-
-    #[test]
-    fn test_declaration_statement() -> Result<(), ParserError> {
-        build_declaration("var myVar;")?;
-        build_declaration("var myVar = 2;")?;
-        build_declaration("const myConst = 2;")?;
+    fn parse_declaration(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<DeclarationStatement>(input)?;
         Ok(())
     }
 
-    fn build_assignment(input: &str) -> Result<AssignmentStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        AssignmentStatement::parse(pair)
+    fn parse_assignment(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<AssignmentStatement>(input)?;
+        Ok(())
     }
 
     #[test]
-    fn test_assignment_statement() -> Result<(), ParserError> {
-        build_assignment("myVar = 120;")?;
-        build_assignment("myVar = true;")?;
-        build_assignment("myVar = 12 * 12 - 12;")?;
+    fn test_declaration_statement() -> ParseResult<()> {
+        parse_declaration("var myVar;")?;
+        parse_declaration("var myVar = 2;")?;
+        parse_declaration("const myConst = 2;")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_assignment_statement() -> ParseResult<()> {
+        parse_assignment("myVar = 120;")?;
+        parse_assignment("myVar = true;")?;
+        parse_assignment("myVar = 12 * 12 - 12;")?;
         Ok(())
     }
 
     #[test]
     fn test_wrong_declaration_statements() {
-        assert!(statement_pair("const myConst;").is_none());
-        assert!(statement_pair("var myVar").is_none());
-        assert!(statement_pair("var myVar = 2").is_none());
-        assert!(statement_pair("const myVar = 2").is_none());
-        assert!(statement_pair("const const = 2;").is_none());
-        assert!(statement_pair("const var = 2;").is_none());
-        assert!(statement_pair("const if = 2;").is_none());
+        parse_declaration("const myConst;").unwrap_err();
+        parse_declaration("var myVar").unwrap_err();
+        parse_declaration("var myVar = 2").unwrap_err();
+        parse_declaration("const myVar = 2").unwrap_err();
+        parse_declaration("const const = 2;").unwrap_err();
+        parse_declaration("const var = 2;").unwrap_err();
+        parse_declaration("const if = 2;").unwrap_err();
     }
 }

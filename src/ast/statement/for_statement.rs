@@ -59,41 +59,32 @@ impl fmt::Display for ForStatement {
 
 #[cfg(test)]
 mod test {
-    use pest::{iterators::Pair, Parser};
-
-    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
+    use crate::parser::{self, ParseResult};
 
     use super::ForStatement;
 
-    fn statement_pair(input: &str) -> Option<Pair<Rule>> {
-        match AlloyParser::parse(Rule::program, input) {
-            Ok(mut pairs) => Some(pairs.next().unwrap()),
-            Err(_) => None,
-        }
-    }
-
-    fn build_statement(input: &str) -> Result<ForStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        ForStatement::parse(pair)
+    fn parse_for(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<ForStatement>(input)?;
+        Ok(())
     }
 
     #[test]
-    fn test_for_statement() -> Result<(), ParserError> {
-        build_statement("for i in 2 {}")?;
-        build_statement("for i in 2 { break; }")?;
-        build_statement("for i in 2 { continue; }")?;
-        build_statement("for i in 2 { print 4; }")?;
-        build_statement("for i in 2 { print 4; print 2; }")?;
+    fn test_for_statement() -> ParseResult<()> {
+        parse_for("for i in 2 {}")?;
+        parse_for("for i in 2 { break; }")?;
+        parse_for("for i in 2 { continue; }")?;
+        parse_for("for i in 2 { print 4; }")?;
+        parse_for("for i in 2 { print 4; print 2; }")?;
         Ok(())
     }
 
     #[test]
     fn test_wrong_for_statements() {
-        assert!(statement_pair("for i in {}").is_none());
-        assert!(statement_pair("for i 2 {}").is_none());
-        assert!(statement_pair("for in 2 {}").is_none());
-        assert!(statement_pair("for i in 2").is_none());
-        assert!(statement_pair("for i in 2 }").is_none());
-        assert!(statement_pair("for i in 2 {").is_none());
+        parse_for("for i in {}").unwrap_err();
+        parse_for("for i 2 {}").unwrap_err();
+        parse_for("for in 2 {}").unwrap_err();
+        parse_for("for i in 2").unwrap_err();
+        parse_for("for i in 2 }").unwrap_err();
+        parse_for("for i in 2 {").unwrap_err();
     }
 }

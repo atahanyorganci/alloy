@@ -294,57 +294,48 @@ impl fmt::Display for ContinueStatement {
 
 #[cfg(test)]
 mod test {
-    use pest::{iterators::Pair, Parser};
-
-    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
+    use crate::parser::{self, ParseResult};
 
     use super::{BlockStatement, PrintStatement};
 
-    fn statement_pair(input: &str) -> Option<Pair<Rule>> {
-        match AlloyParser::parse(Rule::program, input) {
-            Ok(mut pairs) => Some(pairs.next().unwrap()),
-            Err(_) => None,
-        }
+    fn parse_print(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<PrintStatement>(input)?;
+        Ok(())
     }
 
-    fn build_print(input: &str) -> Result<PrintStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        PrintStatement::parse(pair)
+    fn parse_block(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<BlockStatement>(input)?;
+        Ok(())
     }
 
     #[test]
-    fn test_print_statement() -> Result<(), ParserError> {
-        build_print("print 1;")?;
-        build_print("print 1 * 2;")?;
-        build_print("print 3 < 5;")?;
-        build_print("print 24 - 12;")?;
-        build_print("print 124;")?;
+    fn test_print_statement() -> ParseResult<()> {
+        parse_print("print 1;")?;
+        parse_print("print 1 * 2;")?;
+        parse_print("print 3 < 5;")?;
+        parse_print("print 24 - 12;")?;
+        parse_print("print 124;")?;
         Ok(())
     }
 
     #[test]
     fn test_wrong_print_statements() {
-        assert!(statement_pair("print 2").is_none());
-        assert!(statement_pair("print;").is_none());
-    }
-
-    fn build_block(input: &str) -> Result<BlockStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        BlockStatement::parse(pair)
+        parse_print("print 2").unwrap_err();
+        parse_print("print;").unwrap_err();
     }
 
     #[test]
-    fn test_block_statement() -> Result<(), ParserError> {
-        build_block("{}")?;
-        build_block("{ print 24; }")?;
-        build_block("{ print 24; print 24; }")?;
-        build_block("{ print 24; print 24; print 24; }")?;
+    fn test_block_statement() -> ParseResult<()> {
+        parse_block("{}")?;
+        parse_block("{ print 24; }")?;
+        parse_block("{ print 24; print 24; }")?;
+        parse_block("{ print 24; print 24; print 24; }")?;
         Ok(())
     }
 
     #[test]
     fn test_wrong_block_statements() {
-        assert!(statement_pair("{ print 24; ").is_none());
-        assert!(statement_pair("print 24; }").is_none());
+        parse_block("{ print 24; ").unwrap_err();
+        parse_block("print 24; }").unwrap_err();
     }
 }

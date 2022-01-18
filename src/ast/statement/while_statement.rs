@@ -58,37 +58,28 @@ impl fmt::Display for WhileStatement {
 
 #[cfg(test)]
 mod test {
-    use pest::{iterators::Pair, Parser};
-
-    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
+    use crate::parser::{self, ParseResult, ParserError};
 
     use super::WhileStatement;
 
-    fn statement_pair(input: &str) -> Option<Pair<Rule>> {
-        match AlloyParser::parse(Rule::program, input) {
-            Ok(mut pairs) => Some(pairs.next().unwrap()),
-            Err(_) => None,
-        }
-    }
-
-    fn parse(input: &str) -> Result<WhileStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        WhileStatement::parse(pair)
+    fn parse_while(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<WhileStatement>(input)?;
+        Ok(())
     }
 
     #[test]
     fn test_while_statement() -> Result<(), ParserError> {
-        parse("while true {}")?;
-        parse("while true { print 4; }")?;
-        parse("while true { print 4; print 2; }")?;
+        parse_while("while true {}")?;
+        parse_while("while true { print 4; }")?;
+        parse_while("while true { print 4; print 2; }")?;
         Ok(())
     }
 
     #[test]
     fn test_wrong_while_statements() {
-        assert!(statement_pair("while {}").is_none());
-        assert!(statement_pair("while true").is_none());
-        assert!(statement_pair("while true }").is_none());
-        assert!(statement_pair("while true {").is_none());
+        parse_while("while {}").unwrap_err();
+        parse_while("while true").unwrap_err();
+        parse_while("while true }").unwrap_err();
+        parse_while("while true {").unwrap_err();
     }
 }

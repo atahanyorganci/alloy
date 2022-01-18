@@ -200,40 +200,31 @@ impl Compile for ElseStatement {
 
 #[cfg(test)]
 mod test {
-    use pest::{iterators::Pair, Parser};
-
-    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
+    use crate::parser::{self, ParseResult};
 
     use super::IfStatement;
 
-    fn statement_pair(input: &str) -> Option<Pair<Rule>> {
-        match AlloyParser::parse(Rule::program, input) {
-            Ok(mut pairs) => Some(pairs.next().unwrap()),
-            Err(_) => None,
-        }
-    }
-
-    fn build_if_statement(input: &str) -> Result<IfStatement, ParserError> {
-        let pair = statement_pair(input).unwrap();
-        IfStatement::parse(pair)
+    fn parse_if(input: &str) -> ParseResult<()> {
+        parser::parse_statement::<IfStatement>(input)?;
+        Ok(())
     }
 
     #[test]
-    fn test_if_statement() -> Result<(), ParserError> {
-        build_if_statement("if true {}")?;
-        build_if_statement("if false { print 2; }")?;
-        build_if_statement("if false {} else if true {}")?;
-        build_if_statement("if false {} else if true {} else if true {}")?;
-        build_if_statement("if false {} else if true {} else if true {} else if true {} ")?;
-        build_if_statement("if false {} else if true {} else {}")?;
-        build_if_statement("if false {} else {}")?;
+    fn test_if_statement() -> ParseResult<()> {
+        parse_if("if true {}")?;
+        parse_if("if false { print 2; }")?;
+        parse_if("if false {} else if true {}")?;
+        parse_if("if false {} else if true {} else if true {}")?;
+        parse_if("if false {} else if true {} else if true {} else if true {} ")?;
+        parse_if("if false {} else if true {} else {}")?;
+        parse_if("if false {} else {}")?;
         Ok(())
     }
 
     #[test]
     fn test_wrong_if_statements() {
-        assert!(statement_pair("if {}").is_none());
-        assert!(statement_pair("if true print 2; }").is_none());
-        assert!(statement_pair("if true { print 2;").is_none());
+        parse_if("if {}").unwrap_err();
+        parse_if("if true print 2; }").unwrap_err();
+        parse_if("if true { print 2;").unwrap_err();
     }
 }
