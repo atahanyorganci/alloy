@@ -8,7 +8,7 @@ use pest::{
 use crate::{
     ast::value::Value,
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 use super::{identifier::IdentifierExpression, Expression};
@@ -77,8 +77,8 @@ impl Compile for BinaryExpression {
     }
 }
 
-impl ASTNode<'_> for BinaryExpression {
-    fn build(rule: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for BinaryExpression {
+    fn parse(rule: Pair<'_, Rule>) -> Result<Self, ParserError> {
         let expression = match rule.as_rule() {
             Rule::binary_expression => rule.into_inner(),
             _ => unreachable!(),
@@ -87,9 +87,9 @@ impl ASTNode<'_> for BinaryExpression {
             expression,
             |pair: Pair<Rule>| -> Expression {
                 match pair.as_rule() {
-                    Rule::value => Value::build(pair).unwrap().into(),
-                    Rule::expression => Expression::build(pair).unwrap(),
-                    Rule::identifier => IdentifierExpression::build(pair).unwrap().into(),
+                    Rule::value => Value::parse(pair).unwrap().into(),
+                    Rule::expression => Expression::parse(pair).unwrap(),
+                    Rule::identifier => IdentifierExpression::parse(pair).unwrap().into(),
                     _ => unreachable!("{}", pair),
                 }
             },
@@ -171,13 +171,13 @@ impl fmt::Display for BinaryOperator {
 mod tests {
     use pest::Parser;
 
-    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
+    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
 
     use super::BinaryExpression;
 
     fn parse(input: &str) -> Result<(), ParserError> {
         let mut tokens = AlloyParser::parse(Rule::binary_expression, input).unwrap();
-        BinaryExpression::build(tokens.next().unwrap())?;
+        BinaryExpression::parse(tokens.next().unwrap())?;
         Ok(())
     }
 

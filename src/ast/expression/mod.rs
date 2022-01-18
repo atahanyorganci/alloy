@@ -4,10 +4,12 @@ use pest::iterators::Pair;
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
-use self::{binary::BinaryExpression, identifier::IdentifierExpression, unary::UnaryExpression};
+pub use self::{
+    binary::BinaryExpression, identifier::IdentifierExpression, unary::UnaryExpression,
+};
 
 use super::value::Value;
 
@@ -58,17 +60,17 @@ impl From<IdentifierExpression> for Expression {
     }
 }
 
-impl ASTNode<'_> for Expression {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for Expression {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::expression);
         let inner_pair = pair.into_inner().next().unwrap();
         let expression: Expression = match inner_pair.as_rule() {
-            Rule::binary_expression => BinaryExpression::build(inner_pair)?.into(),
+            Rule::binary_expression => BinaryExpression::parse(inner_pair)?.into(),
             Rule::unprecedent_unary_expression | Rule::precedent_unary_expression => {
-                UnaryExpression::build(inner_pair)?.into()
+                UnaryExpression::parse(inner_pair)?.into()
             }
-            Rule::identifier => IdentifierExpression::build(inner_pair)?.into(),
-            Rule::value => Value::build(inner_pair)?.into(),
+            Rule::identifier => IdentifierExpression::parse(inner_pair)?.into(),
+            Rule::value => Value::parse(inner_pair)?.into(),
             _ => unreachable!(),
         };
         Ok(expression)

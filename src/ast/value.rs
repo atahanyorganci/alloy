@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 use pest::iterators::Pair;
@@ -52,8 +52,8 @@ impl Compile for Value {
     }
 }
 
-impl ASTNode<'_> for Value {
-    fn build(rule: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for Value {
+    fn parse(rule: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(rule.as_rule(), Rule::value);
         let value = rule.into_inner().next().unwrap();
         let result = match value.as_rule() {
@@ -142,14 +142,14 @@ mod test {
     fn test_integer(string: &str, number: i64) {
         let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
         let pair = tokens.next().unwrap();
-        let integer = Value::build(pair).unwrap();
+        let integer = Value::parse(pair).unwrap();
         assert_eq!(integer, number.into());
     }
 
     fn test_float(string: &str, number: f64) {
         let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
         let pair = tokens.next().unwrap();
-        let float = Value::build(pair).unwrap();
+        let float = Value::parse(pair).unwrap();
         assert_eq!(float, number.into());
     }
 

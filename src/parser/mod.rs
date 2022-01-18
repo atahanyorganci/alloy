@@ -1,5 +1,3 @@
-use std::fmt;
-
 use pest::{iterators::Pair, Parser};
 
 #[derive(Parser)]
@@ -9,8 +7,8 @@ pub struct AlloyParser;
 #[derive(Debug)]
 pub enum ParserError {}
 
-pub trait ASTNode<'a>: fmt::Debug + fmt::Display + Sized {
-    fn build(pair: Pair<'a, Rule>) -> Result<Self, ParserError>;
+pub trait Parse<'a>: Sized {
+    fn parse(pair: Pair<'a, Rule>) -> Result<Self, ParserError>;
 }
 
 pub fn parse(input: &str) {

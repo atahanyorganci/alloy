@@ -8,7 +8,7 @@ use crate::{
         identifier::{Identifier, IdentifierKind},
     },
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 #[derive(Debug)]
@@ -28,8 +28,8 @@ impl Compile for DeclarationStatement {
     }
 }
 
-impl ASTNode<'_> for DeclarationStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for DeclarationStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::declaration_statement);
         let mut inner = pair.into_inner();
 
@@ -50,7 +50,7 @@ impl ASTNode<'_> for DeclarationStatement {
         };
 
         let initial_value = match inner.next() {
-            Some(token) => Some(Expression::build(token)?),
+            Some(token) => Some(Expression::parse(token)?),
             None => None,
         };
 
@@ -87,8 +87,8 @@ impl Compile for AssignmentStatement {
     }
 }
 
-impl ASTNode<'_> for AssignmentStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for AssignmentStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::assignment_statement);
         let mut inner = pair.into_inner();
 
@@ -97,7 +97,7 @@ impl ASTNode<'_> for AssignmentStatement {
         let identifier = String::from(identifier_token.as_str());
 
         let expression = inner.next().unwrap();
-        let value = Expression::build(expression)?;
+        let value = Expression::parse(expression)?;
 
         Ok(AssignmentStatement { identifier, value })
     }
@@ -113,7 +113,7 @@ impl fmt::Display for AssignmentStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
+    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
 
     use super::{AssignmentStatement, DeclarationStatement};
 
@@ -126,7 +126,7 @@ mod test {
 
     fn build_declaration(input: &str) -> Result<DeclarationStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        DeclarationStatement::build(pair)
+        DeclarationStatement::parse(pair)
     }
 
     #[test]
@@ -139,7 +139,7 @@ mod test {
 
     fn build_assignment(input: &str) -> Result<AssignmentStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        AssignmentStatement::build(pair)
+        AssignmentStatement::parse(pair)
     }
 
     #[test]

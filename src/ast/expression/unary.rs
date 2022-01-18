@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 use super::Expression;
@@ -27,8 +27,8 @@ impl Compile for UnaryExpression {
     }
 }
 
-impl ASTNode<'_> for UnaryExpression {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for UnaryExpression {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         let mut inner = match pair.as_rule() {
             Rule::unprecedent_unary_expression | Rule::precedent_unary_expression => {
                 pair.into_inner()
@@ -41,7 +41,7 @@ impl ASTNode<'_> for UnaryExpression {
             Rule::plus => UnaryOperator::Plus,
             _ => unreachable!(),
         };
-        let expression = Expression::build(inner.next().unwrap())?;
+        let expression = Expression::parse(inner.next().unwrap())?;
         let expression = Box::from(expression);
         Ok(Self {
             operator,

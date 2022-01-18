@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use crate::{
     ast::{expression::Expression, statement::build_statements},
     compiler::{BlockType, Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 use super::Statement;
@@ -34,14 +34,14 @@ impl Compile for WhileStatement {
     }
 }
 
-impl ASTNode<'_> for WhileStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for WhileStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::while_statement);
         let mut inner = pair.into_inner();
 
         matches!(inner.next().unwrap().as_rule(), Rule::k_while);
         let expression = inner.next().unwrap();
-        let condition = Expression::build(expression)?;
+        let condition = Expression::parse(expression)?;
 
         let statement_pairs = inner.next().unwrap().into_inner();
         let body = build_statements(statement_pairs)?;
@@ -60,7 +60,7 @@ impl fmt::Display for WhileStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
+    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
 
     use super::WhileStatement;
 
@@ -71,16 +71,16 @@ mod test {
         }
     }
 
-    fn build(input: &str) -> Result<WhileStatement, ParserError> {
+    fn parse(input: &str) -> Result<WhileStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        WhileStatement::build(pair)
+        WhileStatement::parse(pair)
     }
 
     #[test]
     fn test_while_statement() -> Result<(), ParserError> {
-        build("while true {}")?;
-        build("while true { print 4; }")?;
-        build("while true { print 4; print 2; }")?;
+        parse("while true {}")?;
+        parse("while true { print 4; }")?;
+        parse("while true { print 4; print 2; }")?;
         Ok(())
     }
 

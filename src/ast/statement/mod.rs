@@ -4,7 +4,7 @@ use pest::iterators::{Pair, Pairs};
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 use self::{
@@ -112,19 +112,19 @@ impl Compile for Statement {
     }
 }
 
-impl ASTNode<'_> for Statement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for Statement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         let statement = match pair.as_rule() {
-            Rule::print_statement => PrintStatement::build(pair)?.into(),
-            Rule::if_statement => IfStatement::build(pair)?.into(),
-            Rule::declaration_statement => DeclarationStatement::build(pair)?.into(),
-            Rule::assignment_statement => AssignmentStatement::build(pair)?.into(),
-            Rule::while_statement => WhileStatement::build(pair)?.into(),
-            Rule::for_statement => ForStatement::build(pair)?.into(),
-            Rule::block_statement => BlockStatement::build(pair)?.into(),
-            Rule::continue_statement => ContinueStatement::build(pair)?.into(),
-            Rule::break_statement => BreakStatement::build(pair)?.into(),
-            Rule::expression_statement => ExpressionStatement::build(pair)?.into(),
+            Rule::print_statement => PrintStatement::parse(pair)?.into(),
+            Rule::if_statement => IfStatement::parse(pair)?.into(),
+            Rule::declaration_statement => DeclarationStatement::parse(pair)?.into(),
+            Rule::assignment_statement => AssignmentStatement::parse(pair)?.into(),
+            Rule::while_statement => WhileStatement::parse(pair)?.into(),
+            Rule::for_statement => ForStatement::parse(pair)?.into(),
+            Rule::block_statement => BlockStatement::parse(pair)?.into(),
+            Rule::continue_statement => ContinueStatement::parse(pair)?.into(),
+            Rule::break_statement => BreakStatement::parse(pair)?.into(),
+            Rule::expression_statement => ExpressionStatement::parse(pair)?.into(),
             _ => unreachable!(),
         };
         Ok(statement)
@@ -161,14 +161,14 @@ impl Compile for PrintStatement {
     }
 }
 
-impl ASTNode<'_> for PrintStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for PrintStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::print_statement);
 
         let mut inner = pair.into_inner();
         matches!(inner.next().unwrap().as_rule(), Rule::k_print);
 
-        let expression = Expression::build(inner.next().unwrap())?;
+        let expression = Expression::parse(inner.next().unwrap())?;
         Ok(PrintStatement { expression })
     }
 }
@@ -193,8 +193,8 @@ impl Compile for BlockStatement {
     }
 }
 
-impl ASTNode<'_> for BlockStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for BlockStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::block_statement);
         let mut inner = pair.into_inner();
 
@@ -224,8 +224,8 @@ impl Compile for BreakStatement {
     }
 }
 
-impl ASTNode<'_> for BreakStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for BreakStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::break_statement);
         Ok(Self {})
     }
@@ -250,12 +250,12 @@ impl Compile for ExpressionStatement {
     }
 }
 
-impl ASTNode<'_> for ExpressionStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for ExpressionStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::expression_statement);
 
         let expression_pair = pair.into_inner().next().unwrap();
-        let expression = Expression::build(expression_pair)?;
+        let expression = Expression::parse(expression_pair)?;
         Ok(Self { expression })
     }
 }
@@ -279,8 +279,8 @@ impl Compile for ContinueStatement {
     }
 }
 
-impl ASTNode<'_> for ContinueStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for ContinueStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::continue_statement);
         Ok(Self {})
     }
@@ -302,7 +302,7 @@ pub fn build_statements(pairs: Pairs<Rule>) -> Result<Vec<Statement>, ParserErro
     for pair in pairs {
         match pair.as_rule() {
             Rule::EOI => break,
-            _ => statements.push(Statement::build(pair)?),
+            _ => statements.push(Statement::parse(pair)?),
         }
     }
     Ok(statements)
@@ -312,7 +312,7 @@ pub fn build_statements(pairs: Pairs<Rule>) -> Result<Vec<Statement>, ParserErro
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
+    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
 
     use super::{BlockStatement, PrintStatement};
 
@@ -325,7 +325,7 @@ mod test {
 
     fn build_print(input: &str) -> Result<PrintStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        PrintStatement::build(pair)
+        PrintStatement::parse(pair)
     }
 
     #[test]
@@ -346,7 +346,7 @@ mod test {
 
     fn build_block(input: &str) -> Result<BlockStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        BlockStatement::build(pair)
+        BlockStatement::parse(pair)
     }
 
     #[test]

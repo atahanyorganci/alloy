@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 #[derive(PartialEq, Eq)]
@@ -23,8 +23,8 @@ impl Compile for IdentifierExpression {
     }
 }
 
-impl ASTNode<'_> for IdentifierExpression {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for IdentifierExpression {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::identifier);
         let ident = String::from(pair.as_str());
         Ok(IdentifierExpression { ident })
@@ -47,7 +47,7 @@ impl fmt::Display for IdentifierExpression {
 mod tests {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, Rule};
+    use crate::parser::{AlloyParser, Parse, Rule};
 
     use super::IdentifierExpression;
 
@@ -60,7 +60,7 @@ mod tests {
 
     fn build_identifier_ast(input: &str) -> Result<IdentifierExpression, ()> {
         match identifier_pair(input) {
-            Some(pair) => match IdentifierExpression::build(pair) {
+            Some(pair) => match IdentifierExpression::parse(pair) {
                 Ok(identifier) => Ok(identifier),
                 Err(_) => Err(()),
             },

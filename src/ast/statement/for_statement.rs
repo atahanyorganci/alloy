@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use crate::{
     ast::{expression::Expression, statement::build_statements},
     compiler::{Compile, Compiler, CompilerError},
-    parser::{ASTNode, ParserError, Rule},
+    parser::{Parse, ParserError, Rule},
 };
 
 use super::Statement;
@@ -23,8 +23,8 @@ impl Compile for ForStatement {
     }
 }
 
-impl ASTNode<'_> for ForStatement {
-    fn build(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
+impl Parse<'_> for ForStatement {
+    fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::for_statement);
         let mut inner = pair.into_inner();
 
@@ -38,7 +38,7 @@ impl ASTNode<'_> for ForStatement {
 
         matches!(inner.next().unwrap().as_rule(), Rule::k_in);
         let expression = inner.next().unwrap();
-        let iterator = Expression::build(expression)?;
+        let iterator = Expression::parse(expression)?;
 
         let statement_pairs = inner.next().unwrap().into_inner();
         let body = build_statements(statement_pairs)?;
@@ -61,7 +61,7 @@ impl fmt::Display for ForStatement {
 mod test {
     use pest::{iterators::Pair, Parser};
 
-    use crate::parser::{ASTNode, AlloyParser, ParserError, Rule};
+    use crate::parser::{AlloyParser, Parse, ParserError, Rule};
 
     use super::ForStatement;
 
@@ -74,7 +74,7 @@ mod test {
 
     fn build_statement(input: &str) -> Result<ForStatement, ParserError> {
         let pair = statement_pair(input).unwrap();
-        ForStatement::build(pair)
+        ForStatement::parse(pair)
     }
 
     #[test]
