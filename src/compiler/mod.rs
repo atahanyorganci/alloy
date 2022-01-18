@@ -271,27 +271,35 @@ impl Instruction {
 
 #[cfg(test)]
 mod tests {
-    use super::CompilerError;
+    use crate::parser;
 
-    fn compile(_input: &str) -> Result<(), CompilerError> {
-        todo!()
+    use super::{Compile, Compiler, CompilerResult};
+
+    fn compile(input: &str) -> CompilerResult<()> {
+        let mut compiler = Compiler::new();
+        let statements = parser::parse(input).unwrap();
+        for statement in &statements {
+            statement.compile(&mut compiler)?;
+        }
+        Ok(())
     }
 
     #[test]
-    fn compile_statements() {
-        assert!(compile("5 + 12 * 4;").is_ok());
-        assert!(compile("const x = 10 * 12; 10 * x;").is_ok());
-        assert!(compile("const x = 10; var y = x; y = x * y;").is_ok());
-        assert!(compile("if true { const x = 12; }").is_ok());
-        assert!(compile("if true { const x = 12; } else { const y = 12; } const z = 12;").is_ok());
-        assert!(compile("if true { const x = 12; } else { const y = 12; } const z = 12;").is_ok());
-        assert!(compile("if true { const a = 0; } else if false { const b = 10; } else { const c = 20; } const d = 30;").is_ok());
-        assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } const d = 30;").is_ok());
-        assert!(compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } else { const d = 30; }").is_ok());
-        assert!(compile("while true { const x = 12; } const y = 12;").is_ok());
-        assert!(compile("while true { print 12; break; } print 54;").is_ok());
-        assert!(compile("while true { print 12; continue; } print 12;").is_ok());
-        assert!(compile("var count = 0; var first = 1; var second = 0; while count < 40 { print first; const temp = first; first = first + second; second = temp; } ").is_ok());
+    fn compile_statements() -> CompilerResult<()> {
+        compile("5 + 12 * 4;")?;
+        compile("const x = 10 * 12; 10 * x;")?;
+        compile("const x = 10; var y = x; y = x * y;")?;
+        compile("if true { const x = 12; }")?;
+        compile("if true { const x = 12; } else { const y = 12; } const z = 12;")?;
+        compile("if true { const x = 12; } else { const y = 12; } const z = 12;")?;
+        compile("if true { const a = 0; } else if false { const b = 10; } else { const c = 20; } const d = 30;")?;
+        compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } const d = 30;")?;
+        compile("if true { const a = 0; } else if false { const b = 10; } else if 0 { const c = 20; } else { const d = 30; }")?;
+        compile("while true { const x = 12; } const y = 12;")?;
+        compile("while true { print 12; break; } print 54;")?;
+        compile("while true { print 12; continue; } print 12;")?;
+        compile("var count = 0; var first = 1; var second = 0; while count < 40 { print first; const temp = first; first = first + second; second = temp; } ")?;
+        Ok(())
     }
 
     #[test]
