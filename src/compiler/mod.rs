@@ -27,9 +27,9 @@ pub enum BlockType {
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
 pub struct Label(usize);
 
-impl Into<Label> for usize {
-    fn into(self) -> Label {
-        Label(self)
+impl From<usize> for Label {
+    fn from(idx: usize) -> Self {
+        Label(idx)
     }
 }
 
@@ -54,9 +54,9 @@ pub struct JumpRef {
     idx: usize,
 }
 
-impl Into<usize> for JumpRef {
-    fn into(self) -> usize {
-        self.idx
+impl From<JumpRef> for usize {
+    fn from(jump: JumpRef) -> Self {
+        jump.idx
     }
 }
 
@@ -89,7 +89,7 @@ impl Compiler {
         self.symbol_table.register_value(value)
     }
 
-    pub fn finish<'a>(&'a mut self) -> (CodeBlock, Vec<&'a String>) {
+    pub fn finish(&mut self) -> (CodeBlock, Vec<&'_ String>) {
         let instructions = mem::take(&mut self.instructions);
         let (values, debug_symbols) = self.symbol_table.finish();
         (

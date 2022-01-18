@@ -29,11 +29,7 @@ impl SymbolTable {
     }
 
     pub fn get(&self, ident: &str) -> Option<(IdentifierKind, u16)> {
-        if let Some(identifier) = self.table.get(ident) {
-            Some(*identifier)
-        } else {
-            None
-        }
+        self.table.get(ident).copied()
     }
 
     pub fn contains(&self, identifier: &str) -> bool {
@@ -75,7 +71,7 @@ impl SymbolTable {
         self.values.get(index as usize)
     }
 
-    pub fn finish<'a>(&'a mut self) -> (Vec<Value>, Vec<&'a String>) {
+    pub fn finish(&mut self) -> (Vec<Value>, Vec<&'_ String>) {
         let values = mem::take(&mut self.values);
         let debug_symbols: Vec<_> = self.table.keys().collect();
         (values, debug_symbols)

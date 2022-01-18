@@ -17,7 +17,7 @@ struct Alloy {
 
 impl Alloy {
     pub fn consume(&self, compiler: &mut Compiler, line: &str) {
-        if line == "" {
+        if line.is_empty() {
             return;
         }
         match parser::parse(line) {
