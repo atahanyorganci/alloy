@@ -1,6 +1,9 @@
 use std::{collections::HashMap, convert::TryInto, fmt, mem};
 
-use crate::ast::{value::Value, Identifier, IdentifierKind};
+use crate::ast::{
+    identifier::{Identifier, IdentifierKind},
+    value::Value,
+};
 
 use self::{code_block::CodeBlock, symbol_table::SymbolTable};
 

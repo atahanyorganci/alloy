@@ -1,6 +1,9 @@
 use std::{collections::HashMap, convert::TryInto, mem};
 
-use crate::ast::{value::Value, Identifier, IdentifierKind};
+use crate::ast::{
+    identifier::{Identifier, IdentifierKind},
+    value::Value,
+};
 
 use super::{CompilerError, CompilerResult};
 

@@ -3,7 +3,10 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    ast::{expression::Expression, Identifier, IdentifierKind},
+    ast::{
+        expression::Expression,
+        identifier::{Identifier, IdentifierKind},
+    },
     compiler::{Compile, Compiler, CompilerError, Instruction},
     parser::{ASTNode, ParserError, Rule},
 };
