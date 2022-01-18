@@ -20,14 +20,14 @@ impl Alloy {
         if line == "" {
             return;
         }
-        let mut parsed = match AlloyParser::parse(Rule::program, line) {
+        let parsed = match AlloyParser::parse(Rule::program, line) {
             Ok(pairs) => pairs,
             Err(err) => {
                 eprintln!("{err:?}");
                 return;
             }
         };
-        let statements = match build_statements(&mut parsed) {
+        let statements = match build_statements(parsed) {
             Ok(statements) => statements,
             Err(err) => {
                 eprintln!("{err:?}");

@@ -40,8 +40,8 @@ impl ASTNode<'_> for ForStatement {
         let expression = inner.next().unwrap();
         let iterator = Expression::build(expression)?;
 
-        let mut statement_pairs = inner.next().unwrap().into_inner();
-        let body = build_statements(&mut statement_pairs)?;
+        let statement_pairs = inner.next().unwrap().into_inner();
+        let body = build_statements(statement_pairs)?;
 
         Ok(ForStatement {
             identifier,

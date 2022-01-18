@@ -200,7 +200,7 @@ impl ASTNode<'_> for BlockStatement {
 
         let statements = inner.next().unwrap();
         matches!(statements.as_rule(), Rule::statements);
-        let body = build_statements(&mut statements.into_inner())?;
+        let body = build_statements(statements.into_inner())?;
         Ok(BlockStatement { body })
     }
 }
@@ -292,8 +292,13 @@ impl fmt::Display for ContinueStatement {
     }
 }
 
-pub fn build_statements(pairs: &mut Pairs<Rule>) -> Result<Vec<Statement>, ParserError> {
-    let mut statements = Vec::new();
+pub fn build_statements(pairs: Pairs<Rule>) -> Result<Vec<Statement>, ParserError> {
+    let (_, max) = pairs.size_hint();
+    let mut statements = if let Some(capacity) = max {
+        Vec::with_capacity(capacity)
+    } else {
+        Vec::new()
+    };
     for pair in pairs {
         match pair.as_rule() {
             Rule::EOI => break,

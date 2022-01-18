@@ -43,8 +43,8 @@ impl ASTNode<'_> for WhileStatement {
         let expression = inner.next().unwrap();
         let condition = Expression::build(expression)?;
 
-        let mut statement_pairs = inner.next().unwrap().into_inner();
-        let body = build_statements(&mut statement_pairs)?;
+        let statement_pairs = inner.next().unwrap().into_inner();
+        let body = build_statements(statement_pairs)?;
 
         Ok(WhileStatement { condition, body })
     }

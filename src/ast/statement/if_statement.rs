@@ -69,8 +69,8 @@ impl ASTNode<'_> for IfStatement {
         let expression = if_body.next().unwrap();
         let condition = Expression::build(expression)?;
 
-        let mut statement_pairs = if_body.next().unwrap().into_inner();
-        let statements = build_statements(&mut statement_pairs)?;
+        let statement_pairs = if_body.next().unwrap().into_inner();
+        let statements = build_statements(statement_pairs)?;
         let if_statement = ConditionalStatement {
             condition,
             statements,
@@ -149,8 +149,8 @@ impl ASTNode<'_> for ElseIfStatement {
         let expression = inner.next().unwrap();
         let condition = Expression::build(expression).unwrap();
 
-        let mut statement_pairs = inner.next().unwrap().into_inner();
-        let statements = build_statements(&mut statement_pairs)?;
+        let statement_pairs = inner.next().unwrap().into_inner();
+        let statements = build_statements(statement_pairs)?;
 
         Ok(ElseIfStatement(ConditionalStatement {
             condition,
@@ -182,8 +182,8 @@ impl ASTNode<'_> for ElseStatement {
 
         matches!(inner.next().unwrap().as_rule(), Rule::k_else);
 
-        let mut statement_pairs = inner.next().unwrap().into_inner();
-        let statements = build_statements(&mut statement_pairs)?;
+        let statement_pairs = inner.next().unwrap().into_inner();
+        let statements = build_statements(statement_pairs)?;
 
         Ok(ElseStatement { statements })
     }
