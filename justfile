@@ -22,12 +22,14 @@ check:
 
 
     printf 'Remote is at %s. Checking each commit until the origin.\n' "$remote"
+    git stash > /dev/null && echo "Stashing local changes."
     hist=$(git log --oneline | awk '{print $1 }')
     while IFS= read -r curr; do
         if [[ "$curr" == "$hash" ]]; then
             echo "Sucessfully finished."
-            exit 0
+            break
         fi
         printf 'Checking `%s`...' "$curr"
-        cargo check -q 2> /dev/null || exit 1 && printf " done!\n"
+        cargo build -q 2> /dev/null || exit 1 && printf " done!\n"
     done <<< "$hist"
+    git stash pop > /dev/null && echo "Popped local changes back."
