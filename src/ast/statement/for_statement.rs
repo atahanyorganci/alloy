@@ -3,9 +3,9 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    ast::{expression::Expression, statement::build_statements},
+    ast::expression::Expression,
     compiler::{Compile, Compiler, CompilerError},
-    parser::{Parse, ParserError, Rule},
+    parser::{self, Parse, ParserError, Rule},
 };
 
 use super::Statement;
@@ -41,7 +41,7 @@ impl Parse<'_> for ForStatement {
         let iterator = Expression::parse(expression)?;
 
         let statement_pairs = inner.next().unwrap().into_inner();
-        let body = build_statements(statement_pairs)?;
+        let body = parser::parse_pairs(statement_pairs)?;
 
         Ok(ForStatement {
             identifier,

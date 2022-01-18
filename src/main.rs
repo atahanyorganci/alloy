@@ -1,9 +1,9 @@
 use alloy::{
-    ast::statement::{build_statements, Statement},
+    ast::statement::Statement,
     compiler::{Compile, Compiler},
-    parser::{AlloyParser, Rule},
+    parser,
 };
-use pest::Parser;
+
 use rustyline::error::ReadlineError;
 use structopt::StructOpt;
 
@@ -20,21 +20,12 @@ impl Alloy {
         if line == "" {
             return;
         }
-        let parsed = match AlloyParser::parse(Rule::program, line) {
-            Ok(pairs) => pairs,
-            Err(err) => {
-                eprintln!("{err:?}");
-                return;
+        match parser::parse(line) {
+            Ok(statements) => {
+                self.compile(compiler, statements);
             }
-        };
-        let statements = match build_statements(parsed) {
-            Ok(statements) => statements,
-            Err(err) => {
-                eprintln!("{err:?}");
-                return;
-            }
-        };
-        self.compile(compiler, statements);
+            Err(err) => eprintln!("{err:?}"),
+        }
     }
 
     pub fn compile(&self, compiler: &mut Compiler, statements: Vec<Statement>) {

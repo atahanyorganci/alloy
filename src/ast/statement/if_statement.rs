@@ -3,9 +3,9 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    ast::{expression::Expression, statement::build_statements},
+    ast::expression::Expression,
     compiler::{BlockType, Compile, Compiler, CompilerError},
-    parser::{Parse, ParserError, Rule},
+    parser::{self, Parse, ParserError, Rule},
 };
 
 use super::Statement;
@@ -70,7 +70,7 @@ impl Parse<'_> for IfStatement {
         let condition = Expression::parse(expression)?;
 
         let statement_pairs = if_body.next().unwrap().into_inner();
-        let statements = build_statements(statement_pairs)?;
+        let statements = parser::parse_pairs(statement_pairs)?;
         let if_statement = ConditionalStatement {
             condition,
             statements,
@@ -150,7 +150,7 @@ impl Parse<'_> for ElseIfStatement {
         let condition = Expression::parse(expression).unwrap();
 
         let statement_pairs = inner.next().unwrap().into_inner();
-        let statements = build_statements(statement_pairs)?;
+        let statements = parser::parse_pairs(statement_pairs)?;
 
         Ok(ElseIfStatement(ConditionalStatement {
             condition,
@@ -183,7 +183,7 @@ impl Parse<'_> for ElseStatement {
         matches!(inner.next().unwrap().as_rule(), Rule::k_else);
 
         let statement_pairs = inner.next().unwrap().into_inner();
-        let statements = build_statements(statement_pairs)?;
+        let statements = parser::parse_pairs(statement_pairs)?;
 
         Ok(ElseStatement { statements })
     }
