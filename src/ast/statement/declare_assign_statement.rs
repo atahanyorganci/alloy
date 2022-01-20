@@ -19,9 +19,11 @@ pub struct DeclarationStatement {
 
 impl Compile for DeclarationStatement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        let idx = compiler.register(self.identifier.clone())?;
         if let Some(expr) = &self.initial_value {
             expr.compile(compiler)?;
+        }
+        let idx = compiler.register(self.identifier.clone())?;
+        if self.initial_value.is_some() {
             compiler.emit(Instruction::StoreSymbol(idx));
         }
         Ok(())
