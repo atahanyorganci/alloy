@@ -122,22 +122,20 @@ impl Value {
 
 #[cfg(test)]
 mod test {
-    use crate::parser::AlloyParser;
+    use crate::parser::{self, ParseResult, Rule};
 
-    use super::*;
-    use pest::Parser;
+    use super::Value;
 
-    fn test_integer(string: &str, number: i64) {
-        let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
-        let pair = tokens.next().unwrap();
-        let integer = Value::parse(pair).unwrap();
-        assert_eq!(integer, number.into());
+    fn parse_value(input: &str) -> ParseResult<Value> {
+        parser::parse_rule::<Value>(Rule::value, input)
     }
 
-    fn test_float(string: &str, number: f64) {
-        let mut tokens = AlloyParser::parse(Rule::value, string).unwrap();
-        let pair = tokens.next().unwrap();
-        let float = Value::parse(pair).unwrap();
+    fn test_integer(input: &str, number: i64) {
+        assert_eq!(parse_value(input).unwrap(), number.into());
+    }
+
+    fn test_float(input: &str, number: f64) {
+        let float = parse_value(input).unwrap();
         assert_eq!(float, number.into());
     }
 
@@ -177,8 +175,10 @@ mod test {
 
     #[test]
     fn overflow_test() {
-        let num = "1_000_000_000_000_000_000_000_000_000_000";
-        assert!(Value::parse_integer_with_radix(num, 10).is_err());
+        let overflow = "1_000_000_000_000_000_000_000_000_000_000";
+        assert!(parse_value(overflow).is_err());
+        let underflow = "-1_000_000_000_000_000_000_000_000_000_000";
+        assert!(parse_value(underflow).is_err());
     }
 
     #[test]
