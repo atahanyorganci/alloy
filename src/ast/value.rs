@@ -51,8 +51,8 @@ impl Parse<'_> for Value {
         matches!(rule.as_rule(), Rule::value);
         let value = rule.into_inner().next().unwrap();
         let result = match value.as_rule() {
-            Rule::integer => Value::parse_integer(value).unwrap(),
-            Rule::float => Value::parse_float(value).unwrap(),
+            Rule::integer => Value::parse_integer(value)?,
+            Rule::float => Value::parse_float(value)?,
             Rule::boolean => {
                 let s = value.as_str();
                 if s == "true" {
