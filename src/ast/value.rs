@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, num::ParseIntError};
 
 use crate::{
     compiler::{Compile, Compiler, CompilerError, Instruction},
@@ -76,30 +76,33 @@ impl Value {
         let replaced = float.replace(|ch| ch == ' ' || ch == '_', "");
         match replaced.parse::<f64>() {
             Ok(float) => Ok(Value::Float(float)),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(ParserError::for_pair(pair, e)),
         }
     }
 
     fn parse_integer(pair: Pair<Rule>) -> ParseResult<Self> {
         matches!(pair.as_rule(), Rule::integer);
+        let span = pair.as_span();
 
         let mut inner = pair.into_inner();
         let first = inner.next().unwrap();
-        let integer = match inner.next() {
-            Some(rule) => {
-                let unsigned = Value::parse_unsigned_integer(rule)?;
-                match first.as_rule() {
-                    Rule::plus => unsigned,
-                    Rule::minus => -unsigned,
+        match inner.next() {
+            Some(rule) => match Value::parse_unsigned_integer(rule) {
+                Ok(unsigned) => match first.as_rule() {
+                    Rule::plus => Ok(Value::Integer(unsigned)),
+                    Rule::minus => Ok(Value::Integer(-unsigned)),
                     _ => unreachable!(),
-                }
-            }
-            None => Value::parse_unsigned_integer(first)?,
-        };
-        Ok(Value::Integer(integer))
+                },
+                Err(e) => Err(ParserError::for_span(span, e)),
+            },
+            None => match Value::parse_unsigned_integer(first) {
+                Ok(int) => Ok(Value::Integer(int)),
+                Err(e) => Err(ParserError::for_span(span, e)),
+            },
+        }
     }
 
-    fn parse_unsigned_integer(pair: Pair<Rule>) -> ParseResult<i64> {
+    fn parse_unsigned_integer(pair: Pair<Rule>) -> Result<i64, ParseIntError> {
         match pair.as_rule() {
             Rule::binary => Value::parse_integer_with_radix(pair.as_str(), 2),
             Rule::octal => Value::parse_integer_with_radix(pair.as_str(), 8),
@@ -109,14 +112,14 @@ impl Value {
         }
     }
 
-    fn parse_integer_with_radix(integer: &str, radix: u32) -> ParseResult<i64> {
-        let replaced = integer.replace(|ch| ch == ' ' || ch == '_', "");
-        let source = match radix {
-            2 | 8 | 16 => &replaced.as_str()[2..],
-            10 => replaced.as_str(),
+    fn parse_integer_with_radix(input: &str, radix: u32) -> Result<i64, ParseIntError> {
+        let input = match radix {
+            2 | 8 | 16 => &input[2..],
+            10 => input,
             _ => unreachable!(),
         };
-        i64::from_str_radix(source, radix).map_err(|e| e.into())
+        let input = input.replace(|ch| ch == ' ' || ch == '_', "");
+        i64::from_str_radix(&input, radix)
     }
 }
 

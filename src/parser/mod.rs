@@ -1,8 +1,9 @@
 use std::num::{ParseFloatError, ParseIntError};
 
 use pest::{
+    error::LineColLocation,
     iterators::{Pair, Pairs},
-    Parser,
+    Parser, Span,
 };
 use thiserror::Error;
 
@@ -13,7 +14,7 @@ use crate::ast::statement::Statement;
 pub struct AlloyParser;
 
 #[derive(Error, Debug)]
-pub enum ParserError {
+pub enum ParserErrorKind {
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
     #[error(transparent)]
@@ -22,9 +23,33 @@ pub enum ParserError {
     WIP,
 }
 
+#[derive(Debug)]
+pub struct ParserError {
+    kind: ParserErrorKind,
+    location: LineColLocation,
+}
+
 impl From<pest::error::Error<Rule>> for ParserError {
-    fn from(_: pest::error::Error<Rule>) -> Self {
-        ParserError::WIP
+    fn from(e: pest::error::Error<Rule>) -> Self {
+        Self {
+            kind: ParserErrorKind::WIP,
+            location: e.line_col,
+        }
+    }
+}
+
+impl ParserError {
+    pub fn for_pair<T: Into<ParserErrorKind>>(pair: Pair<Rule>, kind: T) -> Self {
+        Self::for_span(pair.as_span(), kind)
+    }
+
+    pub fn for_span<T: Into<ParserErrorKind>>(span: Span, kind: T) -> Self {
+        let start = span.start();
+        let end = span.end();
+        Self {
+            kind: kind.into(),
+            location: LineColLocation::Pos((start, end)),
+        }
     }
 }
 
@@ -67,6 +92,9 @@ pub fn parse_pairs(pairs: Pairs<Rule>) -> Result<Vec<Statement>, ParserError> {
 pub fn parse(input: &str) -> Result<Vec<Statement>, ParserError> {
     match AlloyParser::parse(Rule::program, input) {
         Ok(pairs) => parse_pairs(pairs),
-        Err(e) => Err(e.into()),
+        Err(e) => Err(ParserError {
+            kind: ParserErrorKind::WIP,
+            location: e.line_col,
+        }),
     }
 }
