@@ -35,7 +35,7 @@ impl Alloy {
             }
             if let Err(error) = statement.compile(compiler) {
                 eprintln!("{error:?}");
-                break;
+                return;
             }
         }
         let (code_block, debug_symbols) = compiler.finish();
