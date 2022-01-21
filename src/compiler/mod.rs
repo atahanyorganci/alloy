@@ -1,5 +1,7 @@
 use std::{collections::HashMap, convert::TryInto, fmt, mem};
 
+use thiserror::Error;
+
 use crate::ast::{
     identifier::{Identifier, IdentifierKind},
     value::Value,
@@ -187,15 +189,24 @@ impl Compiler {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Error, Debug, Clone)]
 pub enum CompilerError {
+    #[error("variable limit reached")]
     VariableLimitReached,
-    Redefinition,
-    UndefinedIdentifer,
+    #[error("identifier `{0}` has already been declared")]
+    Redefinition(String),
+    #[error("`{0}` has not been defined")]
+    UndefinedIdentifer(String),
+    #[error("assignment to const variable")]
     AssignmentToConst,
+    #[error("instruction limit has been reached")]
     InstructionLimitReached,
+    #[error("illegal break statement")]
     BreakOutsideLoop,
+    #[error("illegal continue statement")]
     ContinueOutsideLoop,
+    #[error("illegal return statement")]
+    ReturnOutsideFunction,
 }
 
 #[derive(Debug, Clone, Copy)]

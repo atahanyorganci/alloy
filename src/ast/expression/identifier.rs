@@ -16,7 +16,7 @@ impl Compile for IdentifierExpression {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         let instruction = match compiler.get_identifier(&self.ident) {
             Some((_, idx)) => Instruction::LoadSymbol(idx),
-            None => return Err(CompilerError::UndefinedIdentifer),
+            None => return Err(CompilerError::UndefinedIdentifer(self.ident.to_owned())),
         };
         compiler.emit(instruction);
         Ok(())

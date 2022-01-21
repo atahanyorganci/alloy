@@ -34,7 +34,7 @@ impl Alloy {
                 println!("{:?}", statement);
             }
             if let Err(error) = statement.compile(compiler) {
-                eprintln!("{error:?}");
+                eprintln!("{error}");
                 return;
             }
         }
