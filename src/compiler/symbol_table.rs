@@ -20,7 +20,7 @@ impl SymbolTable {
 
     pub fn register(&mut self, identifier: Identifier) -> CompilerResult<u16> {
         if self.contains(&identifier.ident) {
-            return Err(CompilerError::Redefinition);
+            return Err(CompilerError::Redefinition(identifier.ident));
         }
 
         let idx = self.next_identifier()?;

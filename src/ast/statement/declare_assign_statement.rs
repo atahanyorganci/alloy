@@ -84,7 +84,9 @@ impl Compile for AssignmentStatement {
                 Ok(())
             }
             Some((IdentifierKind::Constant, _)) => Err(CompilerError::AssignmentToConst),
-            None => Err(CompilerError::UndefinedIdentifer),
+            None => Err(CompilerError::UndefinedIdentifer(
+                self.identifier.to_owned(),
+            )),
         }
     }
 }
