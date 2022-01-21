@@ -196,11 +196,7 @@ impl Compile for BlockStatement {
 impl Parse<'_> for BlockStatement {
     fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::block_statement);
-        let mut inner = pair.into_inner();
-
-        let statements = inner.next().unwrap();
-        matches!(statements.as_rule(), Rule::statements);
-        let body = parser::parse_pairs(statements.into_inner())?;
+        let body = parser::parse_pairs(pair.into_inner())?;
         Ok(BlockStatement { body })
     }
 }
