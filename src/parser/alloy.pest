@@ -121,26 +121,26 @@ declaration_statement = { k_var ~ identifier ~ semi
 assignment_statement = { identifier ~ "=" ~ expression ~ semi }
 
 // Block Statement
-scoped_statements = _{ "{" ~ statements ~ "}" }
-block_statement = { scoped_statements }
+block_statement = { "{" ~ simple_statement* ~ "}" }
 
 // If Statement
-if_body = { k_if ~ expression ~ scoped_statements }
-else_if_body = { k_else ~ k_if ~ expression ~ scoped_statements }
-else_body = { k_else ~ scoped_statements }
+conditonal_statements = { "{" ~ simple_statement* ~ "}"}
+if_body = { k_if ~ expression ~ conditonal_statements }
+else_if_body = { k_else ~ k_if ~ expression ~ conditonal_statements }
+else_body = { k_else ~ conditonal_statements }
 if_statement = { if_body ~ else_if_body* ~ else_body? }
 
 // Loop Statements
 break_statement = { k_break ~ semi }
 continue_statement = { k_continue ~ semi }
-loop_body_statement = _{ statement | break_statement | continue_statement }
+loop_body_statement = _{ simple_statement | break_statement | continue_statement }
 loop_body = { "{" ~ loop_body_statement* ~ "}"}
 while_statement = { k_while ~ expression ~ loop_body }
 for_statement = { k_for ~ identifier ~ k_in ~ expression ~ loop_body }
 
 expression_statement = { expression ~ semi }
 
-statement = _{ print_statement
+simple_statement = _{ print_statement
     | if_statement
     | declaration_statement
     | assignment_statement
@@ -149,5 +149,4 @@ statement = _{ print_statement
     | block_statement
     | expression_statement
 }
-statements = { statement* }
-program = _{ SOI ~ statement* ~ EOI }
+program = _{ SOI ~ simple_statement* ~ EOI }
