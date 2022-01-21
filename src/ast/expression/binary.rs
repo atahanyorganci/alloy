@@ -34,9 +34,9 @@ lazy_static! {
 
 #[derive(PartialEq)]
 pub struct BinaryExpression {
-    left: Box<Expression>,
-    operator: BinaryOperator,
-    right: Box<Expression>,
+    pub left: Box<Expression>,
+    pub operator: BinaryOperator,
+    pub right: Box<Expression>,
 }
 
 impl fmt::Debug for BinaryExpression {
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn build_expression_test() -> Result<(), ParserError> {
+    fn test_binary_expression() -> Result<(), ParserError> {
         parse_binary("1 + 1")?;
         parse_binary("1 + 2 * 3")?;
         parse_binary("(1 + 2) * 3")?;

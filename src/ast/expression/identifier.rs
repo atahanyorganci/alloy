@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(PartialEq, Eq)]
 pub struct IdentifierExpression {
-    ident: String,
+    pub ident: String,
 }
 
 impl Compile for IdentifierExpression {

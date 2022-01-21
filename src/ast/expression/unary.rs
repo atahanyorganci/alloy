@@ -11,8 +11,8 @@ use super::Expression;
 
 #[derive(PartialEq)]
 pub struct UnaryExpression {
-    operator: UnaryOperator,
-    expression: Box<Expression>,
+    pub operator: UnaryOperator,
+    pub expression: Box<Expression>,
 }
 
 impl Compile for UnaryExpression {
