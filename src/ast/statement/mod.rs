@@ -14,7 +14,10 @@ use self::{
     while_statement::WhileStatement,
 };
 
-use super::expression::Expression;
+use super::{
+    expression::Expression,
+    function::{FunctionStatement, ReturnStatement},
+};
 
 pub mod declare_assign_statement;
 pub mod for_statement;
@@ -33,6 +36,8 @@ pub enum Statement {
     Continue(ContinueStatement),
     Break(BreakStatement),
     Expression(ExpressionStatement),
+    Function(FunctionStatement),
+    Return(ReturnStatement),
 }
 
 impl From<PrintStatement> for Statement {
@@ -95,6 +100,18 @@ impl From<ExpressionStatement> for Statement {
     }
 }
 
+impl From<FunctionStatement> for Statement {
+    fn from(s: FunctionStatement) -> Self {
+        Self::Function(s)
+    }
+}
+
+impl From<ReturnStatement> for Statement {
+    fn from(s: ReturnStatement) -> Self {
+        Self::Return(s)
+    }
+}
+
 impl Compile for Statement {
     fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         match self {
@@ -108,6 +125,8 @@ impl Compile for Statement {
             Statement::Continue(s) => s.compile(compiler),
             Statement::Break(s) => s.compile(compiler),
             Statement::Expression(s) => s.compile(compiler),
+            Statement::Function(s) => s.compile(compiler),
+            Statement::Return(s) => s.compile(compiler),
         }
     }
 }
@@ -125,6 +144,8 @@ impl Parse<'_> for Statement {
             Rule::continue_statement => ContinueStatement::parse(pair)?.into(),
             Rule::break_statement => BreakStatement::parse(pair)?.into(),
             Rule::expression_statement => ExpressionStatement::parse(pair)?.into(),
+            Rule::function_statement => FunctionStatement::parse(pair)?.into(),
+            Rule::return_statement => ReturnStatement::parse(pair)?.into(),
             _ => unreachable!(),
         };
         Ok(statement)
@@ -144,6 +165,8 @@ impl fmt::Display for Statement {
             Statement::Continue(s) => write!(f, "{}", s),
             Statement::Break(s) => write!(f, "{}", s),
             Statement::Expression(s) => write!(f, "{}", s),
+            Statement::Function(s) => write!(f, "{}", s),
+            Statement::Return(s) => write!(f, "{}", s),
         }
     }
 }

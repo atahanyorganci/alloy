@@ -82,6 +82,8 @@ word_not = { "not" }
 k_not = @{ word_not ~ WHITESPACE}
 word_xor = { "xor" }
 k_xor = @{ word_xor ~ WHITESPACE}
+word_fn = { "fn" }
+k_fn = @{ word_fn ~ WHITESPACE}
 keyword = { word_if
     | word_else
     | word_print
@@ -97,6 +99,7 @@ keyword = { word_if
     | word_or
     | word_not
     | word_xor
+    | word_fn
 }
 
 not = { k_not | "!" }
@@ -110,6 +113,14 @@ identifier = @{ !keyword ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // Statements
 semi = _{ ";" }
+
+// Function Statement
+return_statement = { k_return ~ expression? ~ semi }
+function_body_statement = _{ simple_statement | return_statement }
+function_args = { (identifier ~ ",")* ~ identifier? }
+function_signature = _{ identifier ~ "(" ~ function_args ~ ")" }
+function_body = { "{" ~ function_body_statement* ~ "}" }
+function_statement = { k_fn ~ function_signature ~ function_body }
 
 // Print Statement
 print_statement = { k_print ~ expression ~ semi}
@@ -149,4 +160,5 @@ simple_statement = _{ print_statement
     | block_statement
     | expression_statement
 }
-program = _{ SOI ~ simple_statement* ~ EOI }
+top_level_statement = _{ simple_statement | function_statement }
+program = _{ SOI ~ top_level_statement* ~ EOI }
