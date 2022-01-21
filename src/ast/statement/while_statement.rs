@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::expression::Expression,
-    compiler::{BlockType, Compile, Compiler, CompilerError, Instruction},
+    compiler::{BlockType, Compile, Compiler, CompilerResult, Instruction},
     parser::{self, Parse, ParserError, Rule},
 };
 
@@ -17,7 +17,7 @@ pub struct WhileStatement {
 }
 
 impl Compile for WhileStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         compiler.enter_block(BlockType::While);
 
         let condition_label = compiler.place_label();

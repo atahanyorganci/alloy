@@ -13,10 +13,10 @@ pub mod code_block;
 pub mod symbol_table;
 
 pub trait Compile {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()>;
 }
 
-type CompilerResult<T> = Result<T, CompilerError>;
+pub type CompilerResult<T> = Result<T, CompilerError>;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum BlockType {

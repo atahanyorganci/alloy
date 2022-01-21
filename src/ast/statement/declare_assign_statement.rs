@@ -7,7 +7,7 @@ use crate::{
         expression::Expression,
         identifier::{Identifier, IdentifierKind},
     },
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerError, CompilerResult, Instruction},
     parser::{Parse, ParserError, Rule},
 };
 
@@ -18,7 +18,7 @@ pub struct DeclarationStatement {
 }
 
 impl Compile for DeclarationStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         if let Some(expr) = &self.initial_value {
             expr.compile(compiler)?;
         }
@@ -76,7 +76,7 @@ pub struct AssignmentStatement {
 }
 
 impl Compile for AssignmentStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         match compiler.get_identifier(&self.identifier) {
             Some((IdentifierKind::Variable, idx)) => {
                 self.value.compile(compiler)?;

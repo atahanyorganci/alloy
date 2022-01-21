@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::expression::Expression,
-    compiler::{BlockType, Compile, Compiler, CompilerError},
+    compiler::{BlockType, Compile, Compiler, CompilerResult},
     parser::{self, Parse, ParserError, Rule},
 };
 
@@ -16,7 +16,7 @@ pub struct ConditionalStatement {
 }
 
 impl Compile for ConditionalStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.condition.compile(compiler)?;
         let condition_failed = compiler.emit_untargeted_jump();
         for statement in &self.statements {
@@ -97,7 +97,7 @@ impl Parse<'_> for IfStatement {
 }
 
 impl Compile for IfStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         compiler.enter_block(BlockType::If);
         self.if_statement.compile(compiler)?;
         for else_if_statement in &self.else_if_statements {
@@ -160,7 +160,7 @@ impl Parse<'_> for ElseIfStatement {
 }
 
 impl Compile for ElseIfStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.0.compile(compiler)
     }
 }
@@ -190,7 +190,7 @@ impl Parse<'_> for ElseStatement {
 }
 
 impl Compile for ElseStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         for statement in &self.statements {
             statement.compile(compiler)?;
         }

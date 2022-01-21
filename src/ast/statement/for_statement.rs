@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 
 use crate::{
     ast::expression::Expression,
-    compiler::{Compile, Compiler, CompilerError},
+    compiler::{Compile, Compiler, CompilerResult},
     parser::{self, Parse, ParserError, Rule},
 };
 
@@ -18,7 +18,7 @@ pub struct ForStatement {
 }
 
 impl Compile for ForStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, _compiler: &mut Compiler) -> CompilerResult<()> {
         todo!()
     }
 }
