@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::{Pair, Pairs};
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError},
+    compiler::{Compile, Compiler, CompilerResult, Instruction},
     parser::{parse_pairs, Parse, ParseResult, ParserError, Rule},
 };
 
@@ -46,7 +46,7 @@ impl Parse<'_> for ReturnStatement {
 }
 
 impl Compile for ReturnStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, _compiler: &mut Compiler) -> CompilerResult<()> {
         todo!()
     }
 }
@@ -111,7 +111,7 @@ impl<'a> Parse<'a> for FunctionStatement {
 }
 
 impl Compile for FunctionStatement {
-    fn compile(&self, _compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, _compiler: &mut Compiler) -> CompilerResult<()> {
         todo!()
     }
 }

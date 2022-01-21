@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerError, CompilerResult, Instruction},
     parser::{self, Parse, ParserError, Rule},
 };
 
@@ -113,7 +113,7 @@ impl From<ReturnStatement> for Statement {
 }
 
 impl Compile for Statement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         match self {
             Statement::Print(s) => s.compile(compiler),
             Statement::Block(s) => s.compile(compiler),
@@ -177,7 +177,7 @@ pub struct PrintStatement {
 }
 
 impl Compile for PrintStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.expression.compile(compiler)?;
         compiler.emit(Instruction::Display);
         Ok(())
@@ -208,7 +208,7 @@ pub struct BlockStatement {
 }
 
 impl Compile for BlockStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         for statement in &self.body {
             statement.compile(compiler)?;
         }
@@ -234,7 +234,7 @@ impl fmt::Display for BlockStatement {
 pub struct BreakStatement;
 
 impl Compile for BreakStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let jump = compiler.emit_untargeted_jump();
         match compiler.target_jump_on_loop_exit(jump) {
             Some(_) => Ok(()),
@@ -262,7 +262,7 @@ pub struct ExpressionStatement {
 }
 
 impl Compile for ExpressionStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.expression.compile(compiler)?;
         compiler.emit(Instruction::Pop);
         Ok(())
@@ -289,7 +289,7 @@ impl fmt::Display for ExpressionStatement {
 pub struct ContinueStatement;
 
 impl Compile for ContinueStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let jump = compiler.emit_untargeted_jump();
         match compiler.target_jump_on_loop_exit(jump) {
             Some(_) => Ok(()),

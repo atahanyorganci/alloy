@@ -1,7 +1,7 @@
 use std::{fmt, num::ParseIntError};
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerResult, Instruction},
     parser::{Parse, ParseResult, ParserError, Rule},
 };
 
@@ -39,7 +39,7 @@ impl From<f64> for Value {
 }
 
 impl Compile for Value {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let index = compiler.register_value(self.clone())?;
         compiler.emit(Instruction::LoadValue(index));
         Ok(())
