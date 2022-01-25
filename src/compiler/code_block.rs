@@ -50,18 +50,26 @@ impl CodeBlock {
     pub fn disassemble(&self, debug_symbols: &[&String]) -> String {
         self.instructions
             .iter()
-            .map(|instruction| match instruction {
-                Instruction::StoreSymbol(idx) => PrettyInstruction::Symbol {
+            .map(|instruction| match *instruction {
+                Instruction::Store(idx) => PrettyInstruction::Symbol {
                     instruction: *instruction,
-                    identifier: debug_symbols[*idx as usize],
+                    identifier: debug_symbols[idx],
                 },
-                Instruction::LoadSymbol(idx) => PrettyInstruction::Symbol {
+                Instruction::StoreFast(idx) => PrettyInstruction::Symbol {
                     instruction: *instruction,
-                    identifier: debug_symbols[*idx as usize],
+                    identifier: debug_symbols[idx as usize],
+                },
+                Instruction::Load(idx) => PrettyInstruction::Symbol {
+                    instruction: *instruction,
+                    identifier: debug_symbols[idx],
+                },
+                Instruction::LoadFast(idx) => PrettyInstruction::Symbol {
+                    instruction: *instruction,
+                    identifier: debug_symbols[idx as usize],
                 },
                 Instruction::LoadValue(idx) => PrettyInstruction::Value {
                     instruction: *instruction,
-                    value: &self.values[*idx as usize],
+                    value: &self.values[idx as usize],
                 },
                 _ => PrettyInstruction::Plain(*instruction),
             })

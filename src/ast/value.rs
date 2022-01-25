@@ -66,7 +66,7 @@ impl From<f64> for Value {
 
 impl Compile for Value {
     fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
-        let index = compiler.register_value(self.clone())?;
+        let index = compiler.register_value(self.clone());
         compiler.emit(Instruction::LoadValue(index));
         Ok(())
     }

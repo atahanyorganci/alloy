@@ -15,7 +15,7 @@ pub struct IdentifierExpression {
 impl Compile for IdentifierExpression {
     fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let instruction = match compiler.get_identifier(&self.ident) {
-            Some((_, idx)) => Instruction::LoadSymbol(idx),
+            Some((_, idx)) => Instruction::Load(idx),
             None => return Err(CompilerError::UndefinedIdentifer(self.ident.to_owned())),
         };
         compiler.emit(instruction);

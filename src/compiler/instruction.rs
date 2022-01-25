@@ -2,9 +2,14 @@ use core::fmt;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Instruction {
-    StoreSymbol(u16),
-    LoadSymbol(u16),
-    LoadValue(u16),
+    // Load & Store operations
+    StoreFast(u8),
+    LoadFast(u8),
+    LoadFastValue(u8),
+    Store(usize),
+    Load(usize),
+    LoadValue(usize),
+    // Remove value on top of stack
     Pop,
     // Display Instruction to be removed
     Display,
@@ -36,9 +41,6 @@ pub enum Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::StoreSymbol(idx) => write!(f, "StoreSymbol({idx})"),
-            Instruction::LoadSymbol(idx) => write!(f, "LoadSymbol({idx})"),
-            Instruction::LoadValue(idx) => write!(f, "LoadValue({idx})"),
             Instruction::Jump(idx) => write!(f, "Jump({idx})"),
             Instruction::JumpIfTrue(idx) => write!(f, "JumpIfTrue({idx})"),
             Instruction::JumpIfFalse(idx) => write!(f, "JumpIfFalse({idx})"),
@@ -61,6 +63,12 @@ impl fmt::Display for Instruction {
             | Instruction::BinaryLogicalXor
             | Instruction::UnaryMinus
             | Instruction::UnaryNot => write!(f, "{self:?}"),
+            Instruction::StoreFast(u) => write!(f, "StoreFast({u})"),
+            Instruction::LoadFast(u) => write!(f, "LoadFast({u})"),
+            Instruction::LoadFastValue(u) => write!(f, "LoadFastValue({u})"),
+            Instruction::Store(u) => write!(f, "Store({u})"),
+            Instruction::Load(u) => write!(f, "Load({u})"),
+            Instruction::LoadValue(u) => write!(f, "LoadValue({u})"),
         }
     }
 }

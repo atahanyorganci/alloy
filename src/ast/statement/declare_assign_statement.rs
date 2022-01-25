@@ -23,7 +23,7 @@ impl Compile for DeclarationStatement {
         }
         let idx = compiler.register(self.identifier.clone())?;
         if self.initial_value.is_some() {
-            compiler.emit(Instruction::StoreSymbol(idx));
+            compiler.emit(Instruction::Store(idx));
         }
         Ok(())
     }
@@ -90,7 +90,7 @@ impl Compile for AssignmentStatement {
         match compiler.get_identifier(&self.identifier) {
             Some((IdentifierKind::Variable, idx)) => {
                 self.value.compile(compiler)?;
-                compiler.emit(Instruction::StoreSymbol(idx));
+                compiler.emit(Instruction::Store(idx));
                 Ok(())
             }
             Some((IdentifierKind::Constant, _)) => Err(CompilerError::AssignmentToConst),

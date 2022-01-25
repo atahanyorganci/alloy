@@ -82,29 +82,29 @@ impl Compiler {
         self.instructions.push(insruction);
     }
 
-    pub fn register(&mut self, identifier: Identifier) -> CompilerResult<u16> {
+    pub fn register(&mut self, identifier: Identifier) -> CompilerResult<usize> {
         self.symbol_table.register(identifier)
     }
 
-    pub fn register_var(&mut self, ident: &str) -> CompilerResult<u16> {
+    pub fn register_var(&mut self, ident: &str) -> CompilerResult<usize> {
         self.symbol_table.register(Identifier {
             ident: ident.to_string(),
             kind: IdentifierKind::Variable,
         })
     }
 
-    pub fn register_const(&mut self, ident: &str) -> CompilerResult<u16> {
+    pub fn register_const(&mut self, ident: &str) -> CompilerResult<usize> {
         self.symbol_table.register(Identifier {
             ident: ident.to_string(),
             kind: IdentifierKind::Constant,
         })
     }
 
-    pub fn get_identifier(&self, ident: &str) -> Option<(IdentifierKind, u16)> {
+    pub fn get_identifier(&self, ident: &str) -> Option<(IdentifierKind, usize)> {
         self.symbol_table.get(ident)
     }
 
-    pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
+    pub fn register_value(&mut self, value: Value) -> usize {
         self.symbol_table.register_value(value)
     }
 

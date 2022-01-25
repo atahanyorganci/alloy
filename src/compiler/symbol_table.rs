@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto, mem};
+use std::{collections::HashMap, mem};
 
 use crate::ast::{
     identifier::{Identifier, IdentifierKind},
@@ -9,7 +9,7 @@ use super::{CompilerError, CompilerResult};
 
 #[derive(Debug, Default)]
 pub struct SymbolTable {
-    table: HashMap<String, (IdentifierKind, u16)>,
+    table: HashMap<String, (IdentifierKind, usize)>,
     values: Vec<Value>,
 }
 
@@ -18,17 +18,16 @@ impl SymbolTable {
         Self::default()
     }
 
-    pub fn register(&mut self, identifier: Identifier) -> CompilerResult<u16> {
+    pub fn register(&mut self, identifier: Identifier) -> CompilerResult<usize> {
         if self.contains(&identifier.ident) {
             return Err(CompilerError::Redefinition(identifier.ident));
         }
-
-        let idx = self.next_identifier()?;
+        let idx = self.next_identifier();
         self.table.insert(identifier.ident, (identifier.kind, idx));
         Ok(idx)
     }
 
-    pub fn get(&self, ident: &str) -> Option<(IdentifierKind, u16)> {
+    pub fn get(&self, ident: &str) -> Option<(IdentifierKind, usize)> {
         self.table.get(ident).copied()
     }
 
@@ -36,29 +35,21 @@ impl SymbolTable {
         self.table.contains_key(identifier)
     }
 
-    pub fn register_value(&mut self, value: Value) -> Result<u16, CompilerError> {
-        let index = self.next_constant()?;
+    pub fn register_value(&mut self, value: Value) -> usize {
+        let index = self.next_constant();
         self.values.push(value);
-        Ok(index)
+        index
     }
 
-    fn next_identifier(&self) -> Result<u16, CompilerError> {
-        let count = self.table.len();
-        match count.try_into() {
-            Ok(index) => Ok(index),
-            Err(_) => Err(CompilerError::VariableLimitReached),
-        }
+    fn next_identifier(&self) -> usize {
+        self.table.len()
     }
 
-    fn next_constant(&self) -> Result<u16, CompilerError> {
-        let count = self.values.len();
-        match count.try_into() {
-            Ok(index) => Ok(index),
-            Err(_) => Err(CompilerError::VariableLimitReached),
-        }
+    fn next_constant(&self) -> usize {
+        self.values.len()
     }
 
-    pub fn get_symbol(&self, index: u16) -> Option<&String> {
+    pub fn get_symbol(&self, index: usize) -> Option<&String> {
         let result = self.table.iter().find(|(_, (_, idx))| *idx == index);
 
         match result {
