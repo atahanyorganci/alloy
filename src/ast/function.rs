@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::{Pair, Pairs};
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerResult, Instruction},
+    compiler::{Compile, Compiler, CompilerResult},
     parser::{parse_pairs, Parse, ParseResult, ParserError, Rule},
 };
 
@@ -16,8 +16,8 @@ pub struct ReturnStatement {
 impl fmt::Debug for ReturnStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut debug = f.debug_struct("ReturnStatement");
-        if self.expression.is_some() {
-            debug.field("expression", &self.expression);
+        if let Some(expr) = &self.expression {
+            debug.field("expression", expr);
         }
         debug.finish()
     }

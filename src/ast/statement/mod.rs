@@ -24,7 +24,6 @@ pub mod for_statement;
 pub mod if_statement;
 pub mod while_statement;
 
-#[derive(Debug)]
 pub enum Statement {
     Print(PrintStatement),
     If(IfStatement),
@@ -149,6 +148,25 @@ impl Parse<'_> for Statement {
             _ => unreachable!(),
         };
         Ok(statement)
+    }
+}
+
+impl fmt::Debug for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::Print(s) => write!(f, "{s:?}"),
+            Statement::Block(s) => write!(f, "{s:?}"),
+            Statement::If(s) => write!(f, "{s:?}"),
+            Statement::Declaration(s) => write!(f, "{s:?}"),
+            Statement::Assignment(s) => write!(f, "{s:?}"),
+            Statement::While(s) => write!(f, "{s:?}"),
+            Statement::For(s) => write!(f, "{s:?}"),
+            Statement::Continue(s) => write!(f, "{s:?}"),
+            Statement::Break(s) => write!(f, "{s:?}"),
+            Statement::Expression(s) => write!(f, "{s:?}"),
+            Statement::Function(s) => write!(f, "{s:?}"),
+            Statement::Return(s) => write!(f, "{s:?}"),
+        }
     }
 }
 
