@@ -18,7 +18,7 @@ pub struct WhileStatement {
 
 impl Compile for WhileStatement {
     fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
-        compiler.enter_block(BlockType::While);
+        compiler.enter_while();
 
         let condition_label = compiler.place_label();
         self.condition.compile(compiler)?;
@@ -29,7 +29,7 @@ impl Compile for WhileStatement {
             statement.compile(compiler)?;
         }
         compiler.emit(Instruction::Jump(condition_label.target()?));
-        compiler.exit_block();
+        compiler.exit_while();
         Ok(())
     }
 }
