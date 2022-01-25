@@ -14,9 +14,10 @@ pub enum Instruction {
     // Display Instruction to be removed
     Display,
     // Jump Instructions
-    Jump(u16),
-    JumpIfTrue(u16),
-    JumpIfFalse(u16),
+    JumpShort(u8),
+    JumpShortIfZero(u8),
+    Jump(usize),
+    JumpIfZero(usize),
     // Binary Operator Instructions
     BinaryAdd,
     BinarySubtract,
@@ -41,9 +42,6 @@ pub enum Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::Jump(idx) => write!(f, "Jump({idx})"),
-            Instruction::JumpIfTrue(idx) => write!(f, "JumpIfTrue({idx})"),
-            Instruction::JumpIfFalse(idx) => write!(f, "JumpIfFalse({idx})"),
             Instruction::Pop
             | Instruction::Display
             | Instruction::BinaryAdd
@@ -69,12 +67,15 @@ impl fmt::Display for Instruction {
             Instruction::Store(u) => write!(f, "Store({u})"),
             Instruction::Load(u) => write!(f, "Load({u})"),
             Instruction::LoadValue(u) => write!(f, "LoadValue({u})"),
+            Instruction::JumpShort(u) => write!(f, "JumpShort({u})"),
+            Instruction::JumpShortIfZero(u) => write!(f, "JumpShortIfZero({u})"),
+            Instruction::Jump(u) => write!(f, "Jump({u})"),
+            Instruction::JumpIfZero(u) => write!(f, "JumpIfZero({u})"),
         }
     }
 }
 
 impl Instruction {
     pub const UNPLACED_JUMP: Instruction = Instruction::Jump(0);
-    pub const UNPLACED_JUMP_IF_TRUE: Instruction = Instruction::JumpIfTrue(0);
-    pub const UNPLACED_JUMP_IF_FALSE: Instruction = Instruction::JumpIfFalse(0);
+    pub const UNPLACED_JUMP_IF_ZERO: Instruction = Instruction::JumpIfZero(0);
 }

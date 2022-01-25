@@ -45,12 +45,8 @@ impl From<Label> for usize {
 }
 
 impl Label {
-    pub fn target(self) -> Result<u16, CompilerError> {
-        if let Ok(t) = self.0.try_into() {
-            Ok(t)
-        } else {
-            Err(CompilerError::InstructionLimitReached)
-        }
+    pub fn target(self) -> usize {
+        self.0
     }
 }
 
@@ -71,6 +67,37 @@ pub struct Compiler {
     instructions: Vec<Instruction>,
     blocks: Vec<BlockType>,
     unplaced_labels: HashMap<usize, Vec<JumpRef>>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum JumpTarget {
+    Relative(u8),
+    Absolute(usize),
+}
+
+impl From<u8> for JumpTarget {
+    fn from(relative: u8) -> Self {
+        Self::Relative(relative)
+    }
+}
+
+impl From<usize> for JumpTarget {
+    fn from(absolute: usize) -> Self {
+        if let Ok(relative) = absolute.try_into() {
+            Self::Relative(relative)
+        } else {
+            Self::Absolute(absolute)
+        }
+    }
+}
+
+impl JumpTarget {
+    pub fn absolute(self) -> usize {
+        match self {
+            JumpTarget::Relative(relative) => relative.into(),
+            JumpTarget::Absolute(absolute) => absolute,
+        }
+    }
 }
 
 impl Compiler {
@@ -154,12 +181,18 @@ impl Compiler {
 
     pub fn emit_jump(&mut self, jump: Instruction) -> JumpRef {
         match jump {
-            Instruction::Jump(_) | Instruction::JumpIfTrue(_) | Instruction::JumpIfFalse(_) => {
+            Instruction::Jump(_) | Instruction::JumpIfZero(_) => {
                 let idx = self.instructions.len();
                 self.instructions.push(jump);
                 JumpRef { idx }
             }
-            _ => unreachable!(),
+            Instruction::JumpShort(_) | Instruction::JumpShortIfZero(_) => {
+                unreachable!(
+                    "invalid instruction `{:?}`, short jumps are emitted in optimization phase",
+                    jump
+                )
+            }
+            _ => unreachable!("invalid instruction `{:?}`", jump),
         }
     }
 
@@ -167,12 +200,8 @@ impl Compiler {
         self.emit_jump(Instruction::UNPLACED_JUMP)
     }
 
-    pub fn emit_untargeted_jump_if_false(&mut self) -> JumpRef {
-        self.emit_jump(Instruction::UNPLACED_JUMP_IF_FALSE)
-    }
-
-    pub fn emit_untargeted_jump_if_true(&mut self) -> JumpRef {
-        self.emit_jump(Instruction::UNPLACED_JUMP_IF_TRUE)
+    pub fn emit_untargeted_jump_if_zero(&mut self) -> JumpRef {
+        self.emit_jump(Instruction::UNPLACED_JUMP_IF_ZERO)
     }
 
     pub fn place_label(&mut self) -> Label {
@@ -181,12 +210,15 @@ impl Compiler {
 
     pub fn target_jump(&mut self, jump: JumpRef) {
         let idx: usize = jump.into();
-        let target = self.current();
-        let jump = match self.instructions[idx] {
+        let target = self.current().absolute();
+        let instruction = self.instructions[idx];
+        let jump = match instruction {
             Instruction::Jump(_) => Instruction::Jump(target),
-            Instruction::JumpIfTrue(_) => Instruction::JumpIfTrue(target),
-            Instruction::JumpIfFalse(_) => Instruction::JumpIfFalse(target),
-            _ => unreachable!(),
+            Instruction::JumpIfZero(_) => Instruction::JumpIfZero(target),
+            Instruction::JumpShort(_) | Instruction::JumpShortIfZero(_) => {
+                unreachable!("short jumps cannot be targetted `{}`", instruction)
+            }
+            _ => unreachable!("invalid instruction `{}`", instruction),
         };
         self.instructions[idx] = jump;
     }
@@ -219,23 +251,19 @@ impl Compiler {
         None
     }
 
-    fn current(&self) -> u16 {
-        self.instructions.len().try_into().unwrap()
+    fn current(&self) -> JumpTarget {
+        self.instructions.len().into()
     }
 }
 
 #[derive(Error, Debug, Clone)]
 pub enum CompilerError {
-    #[error("variable limit reached")]
-    VariableLimitReached,
     #[error("identifier `{0}` has already been declared")]
     Redefinition(String),
     #[error("`{0}` has not been defined")]
     UndefinedIdentifer(String),
     #[error("assignment to const variable")]
     AssignmentToConst,
-    #[error("instruction limit has been reached")]
-    InstructionLimitReached,
     #[error("illegal break statement")]
     BreakOutsideLoop,
     #[error("illegal continue statement")]

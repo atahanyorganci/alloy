@@ -22,13 +22,13 @@ impl Compile for WhileStatement {
 
         let condition_label = compiler.place_label();
         self.condition.compile(compiler)?;
-        let exit = compiler.emit_untargeted_jump_if_false();
+        let exit = compiler.emit_untargeted_jump_if_zero();
         compiler.target_jump_on_exit(BlockType::While, exit);
 
         for statement in &self.body {
             statement.compile(compiler)?;
         }
-        compiler.emit(Instruction::Jump(condition_label.target()?));
+        compiler.emit(Instruction::Jump(condition_label.target()));
         compiler.exit_while();
         Ok(())
     }
