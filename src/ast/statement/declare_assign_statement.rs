@@ -11,7 +11,6 @@ use crate::{
     parser::{Parse, ParserError, Rule},
 };
 
-#[derive(Debug)]
 pub struct DeclarationStatement {
     identifier: Identifier,
     initial_value: Option<Expression>,
@@ -60,6 +59,17 @@ impl Parse<'_> for DeclarationStatement {
             identifier,
             initial_value,
         })
+    }
+}
+
+impl fmt::Debug for DeclarationStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut debug = f.debug_struct("DeclarationStatement");
+        debug.field("identifier", &self.identifier);
+        if let Some(initial) = &self.initial_value {
+            debug.field("initial_value", initial);
+        }
+        debug.finish()
     }
 }
 
