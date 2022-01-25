@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerResult, Instruction},
     parser::{Parse, ParserError, Rule},
 };
 
@@ -16,7 +16,7 @@ pub struct UnaryExpression {
 }
 
 impl Compile for UnaryExpression {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.expression.compile(compiler)?;
         match self.operator {
             UnaryOperator::Plus => {}

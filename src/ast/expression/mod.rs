@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError},
+    compiler::{Compile, Compiler, CompilerResult},
     parser::{Parse, ParserError, Rule},
 };
 
@@ -26,7 +26,7 @@ pub enum Expression {
 }
 
 impl Compile for Expression {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         match self {
             Expression::Value(expr) => expr.compile(compiler),
             Expression::Binary(expr) => expr.compile(compiler),

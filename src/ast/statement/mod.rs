@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerError, CompilerResult, Instruction},
     parser::{self, Parse, ParserError, Rule},
 };
 
@@ -14,14 +14,16 @@ use self::{
     while_statement::WhileStatement,
 };
 
-use super::expression::Expression;
+use super::{
+    expression::Expression,
+    function::{FunctionStatement, ReturnStatement},
+};
 
 pub mod declare_assign_statement;
 pub mod for_statement;
 pub mod if_statement;
 pub mod while_statement;
 
-#[derive(Debug)]
 pub enum Statement {
     Print(PrintStatement),
     If(IfStatement),
@@ -33,6 +35,8 @@ pub enum Statement {
     Continue(ContinueStatement),
     Break(BreakStatement),
     Expression(ExpressionStatement),
+    Function(FunctionStatement),
+    Return(ReturnStatement),
 }
 
 impl From<PrintStatement> for Statement {
@@ -95,8 +99,20 @@ impl From<ExpressionStatement> for Statement {
     }
 }
 
+impl From<FunctionStatement> for Statement {
+    fn from(s: FunctionStatement) -> Self {
+        Self::Function(s)
+    }
+}
+
+impl From<ReturnStatement> for Statement {
+    fn from(s: ReturnStatement) -> Self {
+        Self::Return(s)
+    }
+}
+
 impl Compile for Statement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         match self {
             Statement::Print(s) => s.compile(compiler),
             Statement::Block(s) => s.compile(compiler),
@@ -108,6 +124,8 @@ impl Compile for Statement {
             Statement::Continue(s) => s.compile(compiler),
             Statement::Break(s) => s.compile(compiler),
             Statement::Expression(s) => s.compile(compiler),
+            Statement::Function(s) => s.compile(compiler),
+            Statement::Return(s) => s.compile(compiler),
         }
     }
 }
@@ -125,9 +143,30 @@ impl Parse<'_> for Statement {
             Rule::continue_statement => ContinueStatement::parse(pair)?.into(),
             Rule::break_statement => BreakStatement::parse(pair)?.into(),
             Rule::expression_statement => ExpressionStatement::parse(pair)?.into(),
+            Rule::function_statement => FunctionStatement::parse(pair)?.into(),
+            Rule::return_statement => ReturnStatement::parse(pair)?.into(),
             _ => unreachable!(),
         };
         Ok(statement)
+    }
+}
+
+impl fmt::Debug for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::Print(s) => write!(f, "{s:?}"),
+            Statement::Block(s) => write!(f, "{s:?}"),
+            Statement::If(s) => write!(f, "{s:?}"),
+            Statement::Declaration(s) => write!(f, "{s:?}"),
+            Statement::Assignment(s) => write!(f, "{s:?}"),
+            Statement::While(s) => write!(f, "{s:?}"),
+            Statement::For(s) => write!(f, "{s:?}"),
+            Statement::Continue(s) => write!(f, "{s:?}"),
+            Statement::Break(s) => write!(f, "{s:?}"),
+            Statement::Expression(s) => write!(f, "{s:?}"),
+            Statement::Function(s) => write!(f, "{s:?}"),
+            Statement::Return(s) => write!(f, "{s:?}"),
+        }
     }
 }
 
@@ -144,6 +183,8 @@ impl fmt::Display for Statement {
             Statement::Continue(s) => write!(f, "{}", s),
             Statement::Break(s) => write!(f, "{}", s),
             Statement::Expression(s) => write!(f, "{}", s),
+            Statement::Function(s) => write!(f, "{}", s),
+            Statement::Return(s) => write!(f, "{}", s),
         }
     }
 }
@@ -154,7 +195,7 @@ pub struct PrintStatement {
 }
 
 impl Compile for PrintStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.expression.compile(compiler)?;
         compiler.emit(Instruction::Display);
         Ok(())
@@ -185,7 +226,7 @@ pub struct BlockStatement {
 }
 
 impl Compile for BlockStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         for statement in &self.body {
             statement.compile(compiler)?;
         }
@@ -196,11 +237,7 @@ impl Compile for BlockStatement {
 impl Parse<'_> for BlockStatement {
     fn parse(pair: Pair<'_, Rule>) -> Result<Self, ParserError> {
         matches!(pair.as_rule(), Rule::block_statement);
-        let mut inner = pair.into_inner();
-
-        let statements = inner.next().unwrap();
-        matches!(statements.as_rule(), Rule::statements);
-        let body = parser::parse_pairs(statements.into_inner())?;
+        let body = parser::parse_pairs(pair.into_inner())?;
         Ok(BlockStatement { body })
     }
 }
@@ -215,7 +252,7 @@ impl fmt::Display for BlockStatement {
 pub struct BreakStatement;
 
 impl Compile for BreakStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let jump = compiler.emit_untargeted_jump();
         match compiler.target_jump_on_loop_exit(jump) {
             Some(_) => Ok(()),
@@ -243,7 +280,7 @@ pub struct ExpressionStatement {
 }
 
 impl Compile for ExpressionStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.expression.compile(compiler)?;
         compiler.emit(Instruction::Pop);
         Ok(())
@@ -270,7 +307,7 @@ impl fmt::Display for ExpressionStatement {
 pub struct ContinueStatement;
 
 impl Compile for ContinueStatement {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let jump = compiler.emit_untargeted_jump();
         match compiler.target_jump_on_loop_exit(jump) {
             Some(_) => Ok(()),

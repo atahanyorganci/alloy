@@ -7,7 +7,7 @@ use pest::{
 
 use crate::{
     ast::value::Value,
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerResult, Instruction},
     parser::{Parse, ParserError, Rule},
 };
 
@@ -52,7 +52,7 @@ impl fmt::Display for BinaryExpression {
 }
 
 impl Compile for BinaryExpression {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         self.left.compile(compiler)?;
         self.right.compile(compiler)?;
         let instruction = match self.operator {

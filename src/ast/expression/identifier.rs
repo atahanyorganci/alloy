@@ -3,7 +3,7 @@ use std::fmt;
 use pest::iterators::Pair;
 
 use crate::{
-    compiler::{Compile, Compiler, CompilerError, Instruction},
+    compiler::{Compile, Compiler, CompilerError, CompilerResult, Instruction},
     parser::{Parse, ParserError, Rule},
 };
 
@@ -13,10 +13,10 @@ pub struct IdentifierExpression {
 }
 
 impl Compile for IdentifierExpression {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let instruction = match compiler.get_identifier(&self.ident) {
             Some((_, idx)) => Instruction::LoadSymbol(idx),
-            None => return Err(CompilerError::UndefinedIdentifer),
+            None => return Err(CompilerError::UndefinedIdentifer(self.ident.to_owned())),
         };
         compiler.emit(instruction);
         Ok(())

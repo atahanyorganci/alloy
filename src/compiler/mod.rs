@@ -1,5 +1,7 @@
 use std::{collections::HashMap, convert::TryInto, fmt, mem};
 
+use thiserror::Error;
+
 use crate::ast::{
     identifier::{Identifier, IdentifierKind},
     value::Value,
@@ -11,10 +13,10 @@ pub mod code_block;
 pub mod symbol_table;
 
 pub trait Compile {
-    fn compile(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
+    fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()>;
 }
 
-type CompilerResult<T> = Result<T, CompilerError>;
+pub type CompilerResult<T> = Result<T, CompilerError>;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum BlockType {
@@ -81,6 +83,20 @@ impl Compiler {
         self.symbol_table.register(identifier)
     }
 
+    pub fn register_var(&mut self, ident: &str) -> CompilerResult<u16> {
+        self.symbol_table.register(Identifier {
+            ident: ident.to_string(),
+            kind: IdentifierKind::Variable,
+        })
+    }
+
+    pub fn register_const(&mut self, ident: &str) -> CompilerResult<u16> {
+        self.symbol_table.register(Identifier {
+            ident: ident.to_string(),
+            kind: IdentifierKind::Constant,
+        })
+    }
+
     pub fn get_identifier(&self, ident: &str) -> Option<(IdentifierKind, u16)> {
         self.symbol_table.get(ident)
     }
@@ -101,18 +117,36 @@ impl Compiler {
         )
     }
 
-    pub fn enter_block(&mut self, block_type: BlockType) {
+    fn enter_block(&mut self, block_type: BlockType) {
         self.blocks.push(block_type)
     }
 
-    pub fn exit_block(&mut self) {
-        self.blocks.pop().unwrap();
+    fn exit_block(&mut self, expected: BlockType) {
+        let got = self.blocks.pop().unwrap();
+        debug_assert_eq!(expected, got);
+
         let block_idx = self.blocks.len();
         if let Some(registered) = self.unplaced_labels.remove(&block_idx) {
             for jump in registered {
                 self.target_jump(jump);
             }
         }
+    }
+
+    pub fn enter_if(&mut self) {
+        self.enter_block(BlockType::If);
+    }
+
+    pub fn exit_if(&mut self) {
+        self.exit_block(BlockType::If);
+    }
+
+    pub fn enter_while(&mut self) {
+        self.enter_block(BlockType::While);
+    }
+
+    pub fn exit_while(&mut self) {
+        self.exit_block(BlockType::While);
     }
 
     pub fn emit_jump(&mut self, jump: Instruction) -> JumpRef {
@@ -187,15 +221,24 @@ impl Compiler {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Error, Debug, Clone)]
 pub enum CompilerError {
+    #[error("variable limit reached")]
     VariableLimitReached,
-    Redefinition,
-    UndefinedIdentifer,
+    #[error("identifier `{0}` has already been declared")]
+    Redefinition(String),
+    #[error("`{0}` has not been defined")]
+    UndefinedIdentifer(String),
+    #[error("assignment to const variable")]
     AssignmentToConst,
+    #[error("instruction limit has been reached")]
     InstructionLimitReached,
+    #[error("illegal break statement")]
     BreakOutsideLoop,
+    #[error("illegal continue statement")]
     ContinueOutsideLoop,
+    #[error("illegal return statement")]
+    ReturnOutsideFunction,
 }
 
 #[derive(Debug, Clone, Copy)]
