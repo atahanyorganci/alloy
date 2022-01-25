@@ -30,6 +30,14 @@ check:
             break
         fi
         printf 'Checking `%s`...' "$curr"
-        cargo build -q 2> /dev/null || exit 1 && printf " done!\n"
+        git checkout "$curr" 2> /dev/null && cargo build -q 2> /dev/null
+        if [[ $? == "0" ]]; then
+            printf " done!\n"
+        else
+            printf ' FAILED!\n'
+            git checkout "$branch"
+            exit 1
+        fi
     done <<< "$hist"
-    git stash pop > /dev/null && echo "Popped local changes back."
+    git checkout "$branch" 2> /dev/null > /dev/null
+    git stash pop 2> /dev/null > /dev/null && echo "Popped local changes back."
