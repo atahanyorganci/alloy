@@ -98,7 +98,7 @@ impl Parse<'_> for IfStatement {
 
 impl Compile for IfStatement {
     fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
-        compiler.enter_block(BlockType::If);
+        compiler.enter_if();
         self.if_statement.compile(compiler)?;
         for else_if_statement in &self.else_if_statements {
             else_if_statement.compile(compiler)?;
@@ -106,7 +106,7 @@ impl Compile for IfStatement {
         if let Some(ref else_statement) = self.else_statement {
             else_statement.compile(compiler)?;
         }
-        compiler.exit_block();
+        compiler.exit_if();
         Ok(())
     }
 }
