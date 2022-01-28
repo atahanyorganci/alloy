@@ -1,5 +1,11 @@
 use std::num::{ParseFloatError, ParseIntError};
 
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    error::{context, VerboseError},
+    IResult,
+};
 use pest::{
     error::LineColLocation,
     iterators::{Pair, Pairs},
@@ -7,7 +13,7 @@ use pest::{
 };
 use thiserror::Error;
 
-use crate::ast::statement::Statement;
+use crate::ast::{statement::Statement, value::Value};
 
 #[derive(Parser)]
 #[grammar = "parser/alloy.pest"]
@@ -53,6 +59,8 @@ impl ParserError {
     }
 }
 
+type Res<T, U> = IResult<T, U, VerboseError<T>>;
+
 pub type ParseResult<T> = Result<T, ParserError>;
 
 pub trait Parse<'a>: Sized {
@@ -96,5 +104,30 @@ pub fn parse(input: &str) -> Result<Vec<Statement>, ParserError> {
             kind: ParserErrorKind::WIP,
             location: e.line_col,
         }),
+    }
+}
+
+fn parse_boolean(input: &str) -> Res<&str, Value> {
+    let result = context("boolean", alt((tag("true"), tag("false"))))(input);
+    result.map(|(next_input, res)| {
+        let value = if res == "true" {
+            Value::True
+        } else {
+            Value::False
+        };
+        (next_input, value)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::value::Value;
+
+    use super::parse_boolean;
+
+    #[test]
+    fn test_boolean() {
+        assert_eq!(parse_boolean("true"), Ok(("", Value::True)));
+        assert_eq!(parse_boolean("false"), Ok(("", Value::False)));
     }
 }
