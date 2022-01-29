@@ -1,10 +1,11 @@
 use std::num::{ParseFloatError, ParseIntError};
 
 use nom::{
+    self,
     branch::alt,
     bytes::complete::tag,
     error::{context, VerboseError},
-    IResult,
+    Compare, IResult, InputTake,
 };
 use pest::{
     error::LineColLocation,
@@ -27,6 +28,81 @@ pub enum ParserErrorKind {
     ParseFloatError(#[from] ParseFloatError),
     #[error("WIP")]
     WIP,
+}
+
+type Res<'a, T> = IResult<ParserInput<'a>, Spanned<T>, VerboseError<ParserInput<'a>>>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParserInput<'a> {
+    s: &'a str,
+    position: usize,
+}
+
+impl<'a> From<&'a str> for ParserInput<'a> {
+    fn from(s: &'a str) -> Self {
+        Self { s, position: 0 }
+    }
+}
+
+impl PartialEq<&str> for ParserInput<'_> {
+    fn eq(&self, s: &&str) -> bool {
+        self.s == *s
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Spanned<T> {
+    pub ast: T,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl InputTake for ParserInput<'_> {
+    #[inline]
+    fn take(&self, count: usize) -> Self {
+        let s = &self.s[..count];
+        let position = self.position + count;
+        Self { s, position }
+    }
+
+    #[inline]
+    fn take_split(&self, count: usize) -> (Self, Self) {
+        let (prefix, suffix) = self.s.split_at(count);
+        let prefix = Self {
+            s: prefix,
+            position: self.position,
+        };
+        let suffix = Self {
+            s: suffix,
+            position: count,
+        };
+        (suffix, prefix)
+    }
+}
+
+impl<T> PartialEq<T> for Spanned<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.ast == *other
+    }
+}
+
+impl Compare<&str> for ParserInput<'_> {
+    fn compare(&self, t: &str) -> nom::CompareResult {
+        self.current().compare(t)
+    }
+
+    fn compare_no_case(&self, t: &str) -> nom::CompareResult {
+        self.current().compare_no_case(t)
+    }
+}
+
+impl ParserInput<'_> {
+    pub fn current(&self) -> &str {
+        &self.s[self.position..]
+    }
 }
 
 #[derive(Debug)]
@@ -58,8 +134,6 @@ impl ParserError {
         }
     }
 }
-
-type Res<T, U> = IResult<T, U, VerboseError<T>>;
 
 pub type ParseResult<T> = Result<T, ParserError>;
 
@@ -107,27 +181,48 @@ pub fn parse(input: &str) -> Result<Vec<Statement>, ParserError> {
     }
 }
 
-fn parse_boolean(input: &str) -> Res<&str, Value> {
-    let result = context("boolean", alt((tag("true"), tag("false"))))(input);
-    result.map(|(next_input, res)| {
-        let value = if res == "true" {
-            Value::True
-        } else {
-            Value::False
-        };
-        (next_input, value)
-    })
+/// Parses a string into an `ast::Value::False` or `ast::Value::True`
+/// or returns an error.
+///
+/// # Examples
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_bool};
+/// assert_eq!(parse_bool("true"), Ok(Value::True));
+/// assert_eq!(parse_bool("false"), Ok(Value::False));
+/// ```
+pub fn parse_bool<'a>(input: ParserInput<'a>) -> Res<'a, Value> {
+    let start = input.position;
+    let (next_input, res) = context("bool", alt((tag("true"), tag("false"))))(input)?;
+    let value = if res == "true" {
+        Value::True
+    } else {
+        Value::False
+    };
+    let spanned = Spanned {
+        ast: value,
+        start,
+        end: next_input.position,
+    };
+    Ok((next_input, spanned))
 }
 
 #[cfg(test)]
 mod tests {
     use crate::ast::value::Value;
 
-    use super::parse_boolean;
+    use super::parse_bool;
 
     #[test]
     fn test_boolean() {
-        assert_eq!(parse_boolean("true"), Ok(("", Value::True)));
-        assert_eq!(parse_boolean("false"), Ok(("", Value::False)));
+        let (rest, spanned) = parse_bool("true".into()).unwrap();
+        assert_eq!(rest, "");
+        assert_eq!(spanned.ast, Value::True);
+        assert_eq!(spanned.start, 0);
+        assert_eq!(spanned.end, 4);
+        let (rest, spanned) = parse_bool("false".into()).unwrap();
+        assert_eq!(rest, "");
+        assert_eq!(spanned.ast, Value::False);
+        assert_eq!(spanned.start, 0);
+        assert_eq!(spanned.end, 5);
     }
 }
