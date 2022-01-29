@@ -1,13 +1,12 @@
 use std::{
     fmt,
     num::{ParseFloatError, ParseIntError},
-    str::FromStr,
 };
 
 use nom::{
     self,
     branch::alt,
-    bytes::complete::{tag, take_while},
+    bytes::complete::{tag, take_while, take_while1},
     combinator::opt,
     error::{context, VerboseError},
     sequence::separated_pair,
@@ -239,29 +238,43 @@ pub fn parse_sign(input: Input<'_>) -> SpannedResult<Sign> {
     Ok((next_input, spanned))
 }
 
-/// Parse one or more digits with given radix.
+/// Parse one or more digits with given radix and underscores can be used
+/// for improved readability for large constants.
 ///
 /// # Examples
 ///
 /// ```
 /// use alloy::parser::parse_digits;
 ///
-/// // Parce decimal digits (base/radix 10)
+/// // Parse decimal digits (base/radix 10)
 /// let (input, digits) = parse_digits("123".into(), 10).unwrap();
 /// assert_eq!(input, "");
-/// assert_eq!(digits, "123");
+/// assert_eq!(digits, 123);
 ///
-/// // Parce hexadecimal digits (base/radix 16)
+/// // Parse decimal digits (base/radix 10)
+/// let (input, digits) = parse_digits("1_000_000".into(), 10).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(digits, 1_000_000);
+///
+/// // Parse hexadecimal digits (base/radix 16)
 /// let (input, digits) = parse_digits("FF12a".into(), 16).unwrap();
 /// assert_eq!(input, "");
-/// assert_eq!(digits, "FF12a");
+/// assert_eq!(digits, 1044778);
 /// ```
 ///
 /// # Errors
 ///
 /// This function will return an error if given input doesn't contain digits of given radix.
-pub fn parse_digits(input: Input<'_>, radix: u32) -> ParserResult<'_, Input<'_>> {
-    context("digits", take_while(|p: char| p.is_digit(radix)))(input)
+pub fn parse_digits(input: Input<'_>, radix: u32) -> ParserResult<'_, i64> {
+    let (input, digits) = context(
+        "digits",
+        take_while1(|c: char| c.is_digit(radix) || c == '_'),
+    )(input)?;
+    if digits.input.starts_with("_") {
+        todo!("parse_digits: handle underscores");
+    }
+    let number = i64::from_str_radix(&digits.input.replace("_", ""), radix).unwrap();
+    Ok((input, number))
 }
 
 /// Parse decimal integer into `i64` and convert it to `Value::Integer`.
@@ -411,16 +424,14 @@ pub fn parse_radix_integer<'a>(
     };
 
     // FIXME: Instead of unwrapping result here, we should return an error
-    let (input, digits) = context("radix integer", |input| parse_digits(input, radix))(input)?;
-    let int = match i64::from_str_radix(digits.into(), radix) {
-        Ok(int) if sign == Sign::Positive => int,
-        Ok(int) if sign == Sign::Negative => -int,
-        Err(err) => todo!("unhandled error, `{}`", err),
-        _ => unreachable!(),
+    let (input, integer) = context("radix integer", |input| parse_digits(input, radix))(input)?;
+    let integer = match sign {
+        Sign::Positive => Value::Integer(integer),
+        Sign::Negative => Value::Integer(-integer),
     };
 
     let spanned = Spanned {
-        ast: Value::Integer(int),
+        ast: integer,
         start,
         end: input.position,
     };
@@ -447,48 +458,38 @@ pub fn parse_integer(input: Input<'_>) -> SpannedResult<'_, Value> {
     )(input)
 }
 
-fn parse_decimal_digits(input: Input<'_>) -> ParserResult<'_, Input<'_>> {
+fn parse_decimal_digits(input: Input<'_>) -> ParserResult<'_, i64> {
     parse_digits(input, 10)
 }
 
-fn parse_float_optional(input: Input<'_>) -> ParserResult<'_, (&'_ str, &'_ str)> {
+fn parse_float_optional(input: Input<'_>) -> ParserResult<'_, (i64, i64)> {
     let (input, (whole, fractional)) =
         separated_pair(opt(parse_decimal_digits), tag("."), parse_decimal_digits)(input)?;
-    let whole = whole.map(|w| w.input).unwrap_or_default();
-    let fractional = fractional.input;
+    let whole = whole.unwrap_or_default();
     Ok((input, (whole, fractional)))
 }
 
-fn parse_float_dot_optional(input: Input<'_>) -> ParserResult<'_, (&'_ str, &'_ str)> {
+fn parse_float_dot_optional(input: Input<'_>) -> ParserResult<'_, (i64, i64)> {
     let (input, (whole, fractional)) =
         separated_pair(parse_decimal_digits, tag("."), opt(parse_decimal_digits))(input)?;
-    let whole = whole.input;
-    let fractional = fractional.map(|w| w.input).unwrap_or_default();
+    let fractional = fractional.unwrap_or_default();
     Ok((input, (whole, fractional)))
 }
 
-fn parse_whole(input: &str) -> Result<f64, ParseFloatError> {
-    if input.is_empty() {
-        return Ok(0.0);
-    }
-    f64::from_str(input)
-}
-
-fn parse_fractional(input: &str) -> Result<f64, ParseFloatError> {
-    if input.is_empty() {
-        return Ok(0.0);
-    }
-    let mut float = f64::from_str(input)?;
+fn fractional_part(mut float: f64) -> f64 {
     while float > 1.0 {
         float /= 10.0;
     }
-    Ok(float)
+    float
 }
 
-fn parse_float_number(whole: &str, fractional: &str) -> Result<f64, ParseFloatError> {
-    let whole = parse_whole(whole)?;
-    let fractional = parse_fractional(fractional)?;
-    Ok(whole + fractional)
+fn float_from_parts(sign: Sign, whole: i64, fractional: i64) -> Value {
+    let float = whole as f64 + fractional_part(fractional as f64);
+    let float = match sign {
+        Sign::Positive => float,
+        Sign::Negative => -float,
+    };
+    Value::Float(float)
 }
 
 /// Parse floating point number.
@@ -517,6 +518,10 @@ fn parse_float_number(whole: &str, fractional: &str) -> Result<f64, ParseFloatEr
 /// let (input, float) = parse_float("5.".into()).unwrap();
 /// assert_eq!(input, "");
 /// assert_eq!(float, Value::Float(5.0));
+///
+/// let (input, float) = parse_float("5_000.600_600".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(float, Value::Float(5000.6006));
 /// ```
 ///
 /// # Errors
@@ -535,11 +540,7 @@ pub fn parse_float(input: Input<'_>) -> SpannedResult<'_, Value> {
         "float",
         alt((parse_float_optional, parse_float_dot_optional)),
     )(input)?;
-    let float = match (sign, parse_float_number(whole, fractional)) {
-        (Sign::Positive, Ok(float)) => Value::Float(float),
-        (Sign::Negative, Ok(float)) => Value::Float(-float),
-        (_, Err(err)) => todo!("unhandled error, `{}`", err),
-    };
+    let float = float_from_parts(sign, whole, fractional);
     let spanned = Spanned {
         ast: float,
         start,
