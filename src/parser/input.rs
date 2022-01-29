@@ -1,4 +1,7 @@
-use std::str::{CharIndices, Chars};
+use std::{
+    fmt,
+    str::{CharIndices, Chars},
+};
 
 use nom::{Compare, InputIter, InputLength, InputTake, UnspecializedInput};
 
@@ -90,5 +93,11 @@ impl<'a> UnspecializedInput for Input<'a> {}
 impl<'a> Into<&'a str> for Input<'a> {
     fn into(self) -> &'a str {
         self.input
+    }
+}
+
+impl fmt::Display for Input<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.input)
     }
 }
