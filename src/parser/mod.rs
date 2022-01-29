@@ -1,4 +1,7 @@
-use std::num::{ParseFloatError, ParseIntError};
+use std::{
+    fmt,
+    num::{ParseFloatError, ParseIntError},
+};
 
 use nom::{
     self,
@@ -190,6 +193,15 @@ pub enum Sign {
 impl Default for Sign {
     fn default() -> Self {
         Self::Positive
+    }
+}
+
+impl fmt::Display for Sign {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Positive => write!(f, "+"),
+            Self::Negative => write!(f, "-"),
+        }
     }
 }
 
