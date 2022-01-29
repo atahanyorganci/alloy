@@ -200,13 +200,15 @@ impl Default for Sign {
 /// ```
 /// use alloy::parser::{parse_sign, Sign};
 ///
-/// assert_eq!(parse_sign("+".into()).unwrap(), ("".into(), Sign::Positive));
-/// assert_eq!(parse_sign("-".into()).unwrap(), ("".into(), Sign::Negative));
+/// let (input, sign) = parse_sign("+".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(sign, Sign::Positive);
+///
+/// let (input, sign) = parse_sign("-".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(sign, Sign::Negative);
 /// ```
 ///
-/// # Errors
-///
-/// This function will return an error if .
 pub fn parse_sign(input: Input<'_>) -> SpannedResult<Sign> {
     let start = input.position;
     let (next_input, sign) = context("sign", alt((tag("+"), tag("-"))))(input)?;
@@ -269,28 +271,166 @@ pub fn parse_digits(input: Input<'_>, radix: u32) -> ParserResult<'_, Input<'_>>
 ///
 /// This function will return an error if doesn't contain decimal digits.
 pub fn parse_decimal(input: Input<'_>) -> SpannedResult<'_, Value> {
+    parse_radix_integer(input, 10, None)
+}
+
+/// Parse hexadecimal integer into `i64` and convert it to `Value::Integer`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_hexadecimal};
+///
+/// let (input, value) = parse_hexadecimal("0xFF".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(255));
+///
+/// let (input, value) = parse_hexadecimal("0xab".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(171));
+///
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if it contains doesn't start with
+/// binary prefix `0x` or contains invalid hexadecimal digits.
+pub fn parse_hexadecimal(input: Input<'_>) -> SpannedResult<'_, Value> {
+    parse_radix_integer(input, 16, Some("0x"))
+}
+
+/// Parse octal integer into `i64` and convert it to `Value::Integer`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_octal};
+///
+/// let (input, value) = parse_octal("0o77".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(63));
+///
+/// let (input, value) = parse_octal("0o11".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(9));
+///
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if it contains doesn't start with
+/// binary prefix `0o` or contains invalid octal digits.
+pub fn parse_octal(input: Input<'_>) -> SpannedResult<'_, Value> {
+    parse_radix_integer(input, 8, Some("0o"))
+}
+
+/// Parse binary number into `i64` and convert it to `Value::Integer`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_binary};
+///
+/// let (input, value) = parse_binary("0b101".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(5));
+///
+/// let (input, value) = parse_binary("0b1001".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(9));
+///
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if it contains doesn't start with
+/// binary prefix `0b` or contains invalid binary digits.
+pub fn parse_binary(input: Input<'_>) -> SpannedResult<'_, Value> {
+    parse_radix_integer(input, 2, Some("0b"))
+}
+
+/// Parse hexadecimal integer into `i64` and convert it to `Value::Integer`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_radix_integer};
+///
+/// let (input, value) = parse_radix_integer("0xFF".into(), 16, "0x".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(255));
+///
+/// let (input, value) = parse_radix_integer("0b101".into(), 2, "0b".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(5));
+///
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if it contains doesn't start with given prefix
+/// or contains invalid digits for given radix.
+pub fn parse_radix_integer<'a>(
+    input: Input<'a>,
+    radix: u32,
+    prefix: Option<&'a str>,
+) -> SpannedResult<'a, Value> {
     let start = input.position;
-    let (input, sign) = context("decimal", opt(parse_sign))(input)?;
+
+    // Parse sign of the number or default to positive
+    let (input, sign) = context("radix integer", opt(parse_sign))(input)?;
     let sign = if let Some(sign) = sign {
         sign.ast
     } else {
         Sign::default()
     };
+
+    // Any number of whitespace characters can follow the sign
     let (input, _) = parse_whitespace(input)?;
-    let (input, digits) = parse_digits(input, 10)?;
+
+    // and raidx is not 10, then we need to parse the prefix
+    let input = if let Some(prefix) = prefix {
+        let (input, _) = context("radix integer prefix", tag(prefix))(input)?;
+        input
+    } else {
+        input
+    };
+
     // FIXME: Instead of unwrapping result here, we should return an error
-    let int = match i64::from_str_radix(digits.into(), 10) {
+    let (input, digits) = context("radix integer", |input| parse_digits(input, radix))(input)?;
+    let int = match i64::from_str_radix(digits.into(), radix) {
         Ok(int) if sign == Sign::Positive => int,
         Ok(int) if sign == Sign::Negative => -int,
         Err(err) => todo!("unhandled error, `{}`", err),
         _ => unreachable!(),
     };
+
     let spanned = Spanned {
         ast: Value::Integer(int),
         start,
         end: input.position,
     };
     Ok((input, spanned))
+}
+
+/// Parse integer number not limited to decimal including binary, octal, hexadecimal.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::parse_integer;
+///
+/// assert!(parse_integer("124".into()).is_ok());
+/// assert!(parse_integer("0b111".into()).is_ok());
+/// assert!(parse_integer("0o111".into()).is_ok());
+/// assert!(parse_integer("0xb1AF".into()).is_ok());
+/// ```
+///
+pub fn parse_integer(input: Input<'_>) -> SpannedResult<'_, Value> {
+    context(
+        "integer",
+        alt((parse_decimal, parse_hexadecimal, parse_octal, parse_binary)),
+    )(input)
 }
 
 #[cfg(test)]
