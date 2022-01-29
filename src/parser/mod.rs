@@ -5,7 +5,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     error::{context, VerboseError},
-    Compare, IResult, InputTake,
+    IResult,
 };
 use pest::{
     error::LineColLocation,
@@ -15,6 +15,10 @@ use pest::{
 use thiserror::Error;
 
 use crate::ast::{statement::Statement, value::Value};
+
+pub use self::input::Input;
+
+pub mod input;
 
 #[derive(Parser)]
 #[grammar = "parser/alloy.pest"]
@@ -30,25 +34,8 @@ pub enum ParserErrorKind {
     WIP,
 }
 
-type Res<'a, T> = IResult<ParserInput<'a>, Spanned<T>, VerboseError<ParserInput<'a>>>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParserInput<'a> {
-    s: &'a str,
-    position: usize,
-}
-
-impl<'a> From<&'a str> for ParserInput<'a> {
-    fn from(s: &'a str) -> Self {
-        Self { s, position: 0 }
-    }
-}
-
-impl PartialEq<&str> for ParserInput<'_> {
-    fn eq(&self, s: &&str) -> bool {
-        self.s == *s
-    }
-}
+type ParserResult<'a, T> = IResult<Input<'a>, T, VerboseError<Input<'a>>>;
+type SpannedResult<'a, T> = ParserResult<'a, Spanned<T>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Spanned<T> {
@@ -57,51 +44,12 @@ pub struct Spanned<T> {
     pub end: usize,
 }
 
-impl InputTake for ParserInput<'_> {
-    #[inline]
-    fn take(&self, count: usize) -> Self {
-        let s = &self.s[..count];
-        let position = self.position + count;
-        Self { s, position }
-    }
-
-    #[inline]
-    fn take_split(&self, count: usize) -> (Self, Self) {
-        let (prefix, suffix) = self.s.split_at(count);
-        let prefix = Self {
-            s: prefix,
-            position: self.position,
-        };
-        let suffix = Self {
-            s: suffix,
-            position: count,
-        };
-        (suffix, prefix)
-    }
-}
-
 impl<T> PartialEq<T> for Spanned<T>
 where
     T: PartialEq,
 {
     fn eq(&self, other: &T) -> bool {
         self.ast == *other
-    }
-}
-
-impl Compare<&str> for ParserInput<'_> {
-    fn compare(&self, t: &str) -> nom::CompareResult {
-        self.current().compare(t)
-    }
-
-    fn compare_no_case(&self, t: &str) -> nom::CompareResult {
-        self.current().compare_no_case(t)
-    }
-}
-
-impl ParserInput<'_> {
-    pub fn current(&self) -> &str {
-        &self.s[self.position..]
     }
 }
 
@@ -187,10 +135,16 @@ pub fn parse(input: &str) -> Result<Vec<Statement>, ParserError> {
 /// # Examples
 /// ```
 /// use alloy::{ast::value::Value, parser::parse_bool};
-/// assert_eq!(parse_bool("true"), Ok(Value::True));
-/// assert_eq!(parse_bool("false"), Ok(Value::False));
+///
+/// let (input, value) = parse_bool("true".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::True);
+///
+/// let (input, value) = parse_bool("false".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::False);
 /// ```
-pub fn parse_bool<'a>(input: ParserInput<'a>) -> Res<'a, Value> {
+pub fn parse_bool(input: Input<'_>) -> SpannedResult<'_, Value> {
     let start = input.position;
     let (next_input, res) = context("bool", alt((tag("true"), tag("false"))))(input)?;
     let value = if res == "true" {
