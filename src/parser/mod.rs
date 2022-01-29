@@ -1,6 +1,7 @@
 use std::{
     fmt,
     num::{ParseFloatError, ParseIntError},
+    str::FromStr,
 };
 
 use nom::{
@@ -9,6 +10,7 @@ use nom::{
     bytes::complete::{tag, take_while},
     combinator::opt,
     error::{context, VerboseError},
+    sequence::separated_pair,
     IResult,
 };
 use pest::{
@@ -443,6 +445,107 @@ pub fn parse_integer(input: Input<'_>) -> SpannedResult<'_, Value> {
         "integer",
         alt((parse_decimal, parse_hexadecimal, parse_octal, parse_binary)),
     )(input)
+}
+
+fn parse_decimal_digits(input: Input<'_>) -> ParserResult<'_, Input<'_>> {
+    parse_digits(input, 10)
+}
+
+fn parse_float_optional(input: Input<'_>) -> ParserResult<'_, (&'_ str, &'_ str)> {
+    let (input, (whole, fractional)) =
+        separated_pair(opt(parse_decimal_digits), tag("."), parse_decimal_digits)(input)?;
+    let whole = whole.map(|w| w.input).unwrap_or_default();
+    let fractional = fractional.input;
+    Ok((input, (whole, fractional)))
+}
+
+fn parse_float_dot_optional(input: Input<'_>) -> ParserResult<'_, (&'_ str, &'_ str)> {
+    let (input, (whole, fractional)) =
+        separated_pair(parse_decimal_digits, tag("."), opt(parse_decimal_digits))(input)?;
+    let whole = whole.input;
+    let fractional = fractional.map(|w| w.input).unwrap_or_default();
+    Ok((input, (whole, fractional)))
+}
+
+fn parse_whole(input: &str) -> Result<f64, ParseFloatError> {
+    if input.is_empty() {
+        return Ok(0.0);
+    }
+    f64::from_str(input)
+}
+
+fn parse_fractional(input: &str) -> Result<f64, ParseFloatError> {
+    if input.is_empty() {
+        return Ok(0.0);
+    }
+    let mut float = f64::from_str(input)?;
+    while float > 1.0 {
+        float /= 10.0;
+    }
+    Ok(float)
+}
+
+fn parse_float_number(whole: &str, fractional: &str) -> Result<f64, ParseFloatError> {
+    let whole = parse_whole(whole)?;
+    let fractional = parse_fractional(fractional)?;
+    Ok(whole + fractional)
+}
+
+/// Parse floating point number.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_float};
+///
+/// let (input, float) = parse_float("1.23".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(float, Value::Float(1.23));
+///
+/// let (input, float) = parse_float("145.15".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(float, Value::Float(145.15));
+///
+/// let (input, float) = parse_float("- 145.15".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(float, Value::Float(-145.15));
+///
+/// let (input, float) = parse_float(".15".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(float, Value::Float(0.15));
+///
+/// let (input, float) = parse_float("5.".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(float, Value::Float(5.0));
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if input doesn't contain a valid floating point number.
+pub fn parse_float(input: Input<'_>) -> SpannedResult<'_, Value> {
+    let start = input.position;
+    let (input, sign) = context("float", opt(parse_sign))(input)?;
+    let sign = if let Some(sign) = sign {
+        sign.ast
+    } else {
+        Sign::default()
+    };
+    let (input, _) = parse_whitespace(input)?;
+    let (input, (whole, fractional)) = context(
+        "float",
+        alt((parse_float_optional, parse_float_dot_optional)),
+    )(input)?;
+    let float = match (sign, parse_float_number(whole, fractional)) {
+        (Sign::Positive, Ok(float)) => Value::Float(float),
+        (Sign::Negative, Ok(float)) => Value::Float(-float),
+        (_, Err(err)) => todo!("unhandled error, `{}`", err),
+    };
+    let spanned = Spanned {
+        ast: float,
+        start,
+        end: input.position,
+    };
+    Ok((input, spanned))
 }
 
 #[cfg(test)]
