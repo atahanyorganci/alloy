@@ -3,7 +3,8 @@ use std::num::{ParseFloatError, ParseIntError};
 use nom::{
     self,
     branch::alt,
-    bytes::complete::tag,
+    bytes::complete::{tag, take_while},
+    combinator::opt,
     error::{context, VerboseError},
     IResult,
 };
@@ -160,9 +161,144 @@ pub fn parse_bool(input: Input<'_>) -> SpannedResult<'_, Value> {
     Ok((next_input, spanned))
 }
 
+/// Parse consecutive whitespaces including newline and carriage return
+/// characters.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::parse_whitespace;
+///
+/// let (input, whitespace) = parse_whitespace(" \t\r\n123".into()).unwrap();
+/// assert_eq!(input, "123");
+/// assert_eq!(whitespace, " \t\r\n");
+/// ```
+pub fn parse_whitespace(input: Input<'_>) -> ParserResult<'_, Input<'_>> {
+    let (input, whitespace) = context(
+        "whitespace",
+        take_while(|p: char| p.is_whitespace() || p == '\n' || p == '\r'),
+    )(input)?;
+    Ok((input, whitespace))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Sign {
+    Positive,
+    Negative,
+}
+
+impl Default for Sign {
+    fn default() -> Self {
+        Self::Positive
+    }
+}
+
+/// Parse sign of a number either `+` or `-` into `Sign`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::{parse_sign, Sign};
+///
+/// assert_eq!(parse_sign("+".into()).unwrap(), ("".into(), Sign::Positive));
+/// assert_eq!(parse_sign("-".into()).unwrap(), ("".into(), Sign::Negative));
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if .
+pub fn parse_sign(input: Input<'_>) -> SpannedResult<Sign> {
+    let start = input.position;
+    let (next_input, sign) = context("sign", alt((tag("+"), tag("-"))))(input)?;
+    let sign = if sign == "+" {
+        Sign::Positive
+    } else {
+        Sign::Negative
+    };
+    let spanned = Spanned {
+        ast: sign,
+        start,
+        end: next_input.position,
+    };
+    Ok((next_input, spanned))
+}
+
+/// Parse one or more digits with given radix.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::parse_digits;
+///
+/// // Parce decimal digits (base/radix 10)
+/// let (input, digits) = parse_digits("123".into(), 10).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(digits, "123");
+///
+/// // Parce hexadecimal digits (base/radix 16)
+/// let (input, digits) = parse_digits("FF12a".into(), 16).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(digits, "FF12a");
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if given input doesn't contain digits of given radix.
+pub fn parse_digits(input: Input<'_>, radix: u32) -> ParserResult<'_, Input<'_>> {
+    context("digits", take_while(|p: char| p.is_digit(radix)))(input)
+}
+
+/// Parse decimal integer into `i64` and convert it to `Value::Integer`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::parse_decimal};
+///
+/// let (input, value) = parse_decimal("123".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(123));
+///
+/// let (input, value) = parse_decimal("- 123".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Integer(-123));
+///
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if doesn't contain decimal digits.
+pub fn parse_decimal(input: Input<'_>) -> SpannedResult<'_, Value> {
+    let start = input.position;
+    let (input, sign) = context("decimal", opt(parse_sign))(input)?;
+    let sign = if let Some(sign) = sign {
+        sign.ast
+    } else {
+        Sign::default()
+    };
+    let (input, _) = parse_whitespace(input)?;
+    let (input, digits) = parse_digits(input, 10)?;
+    // FIXME: Instead of unwrapping result here, we should return an error
+    let int = match i64::from_str_radix(digits.into(), 10) {
+        Ok(int) if sign == Sign::Positive => int,
+        Ok(int) if sign == Sign::Negative => -int,
+        Err(err) => todo!("unhandled error, `{}`", err),
+        _ => unreachable!(),
+    };
+    let spanned = Spanned {
+        ast: Value::Integer(int),
+        start,
+        end: input.position,
+    };
+    Ok((input, spanned))
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast::value::Value;
+    use crate::{
+        ast::value::Value,
+        parser::{parse_sign, Sign},
+    };
 
     use super::parse_bool;
 
@@ -178,5 +314,19 @@ mod tests {
         assert_eq!(spanned.ast, Value::False);
         assert_eq!(spanned.start, 0);
         assert_eq!(spanned.end, 5);
+    }
+
+    #[test]
+    fn test_sign() {
+        let (rest, spanned) = parse_sign("+".into()).unwrap();
+        assert_eq!(rest, "");
+        assert_eq!(spanned.ast, Sign::Positive);
+        assert_eq!(spanned.start, 0);
+        assert_eq!(spanned.end, 1);
+        let (rest, spanned) = parse_sign("-".into()).unwrap();
+        assert_eq!(rest, "");
+        assert_eq!(spanned.ast, Sign::Negative);
+        assert_eq!(spanned.start, 0);
+        assert_eq!(spanned.end, 1);
     }
 }
