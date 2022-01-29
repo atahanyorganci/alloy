@@ -86,3 +86,9 @@ impl<'a> Compare<&str> for Input<'a> {
 }
 
 impl<'a> UnspecializedInput for Input<'a> {}
+
+impl<'a> Into<&'a str> for Input<'a> {
+    fn into(self) -> &'a str {
+        self.input
+    }
+}
