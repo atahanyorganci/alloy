@@ -441,6 +441,31 @@ pub fn parse_float(input: Input<'_>) -> SpannedResult<'_, Value> {
     Ok((input, spanned))
 }
 
+/// Parse null value and convert it to `Value::Null`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{parser::literal::parse_null, ast::value::Value};
+///
+/// let (input, value) = parse_null("null".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value, Value::Null)
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if input doesn't contain null.
+pub fn parse_null(input: Input<'_>) -> SpannedResult<'_, Value> {
+    let start = input.position;
+    let (input, _) = context("null", tag("null"))(input)?;
+    let spanned = Spanned {
+        start,
+        ast: Value::Null,
+        end: input.position,
+    };
+    Ok((input, spanned))
+}
 #[cfg(test)]
 mod tests {
     use crate::{
