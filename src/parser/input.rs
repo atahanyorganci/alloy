@@ -1,9 +1,10 @@
 use std::{
     fmt,
+    ops::RangeFrom,
     str::{CharIndices, Chars},
 };
 
-use nom::{Compare, InputIter, InputLength, InputTake, UnspecializedInput};
+use nom::{Compare, InputIter, InputLength, InputTake, Slice, UnspecializedInput};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Input<'a> {
@@ -99,5 +100,13 @@ impl<'a> Into<&'a str> for Input<'a> {
 impl fmt::Display for Input<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.input)
+    }
+}
+
+impl Slice<RangeFrom<usize>> for Input<'_> {
+    fn slice(&self, r: RangeFrom<usize>) -> Self {
+        let position = self.position + r.start;
+        let input = self.input.slice(r);
+        Self { position, input }
     }
 }

@@ -3,9 +3,10 @@ use std::fmt;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
+    character::complete::char,
     combinator::opt,
     error::context,
-    sequence::separated_pair,
+    sequence::{preceded, separated_pair},
 };
 
 use crate::ast::value::Value;
@@ -466,6 +467,146 @@ pub fn parse_null(input: Input<'_>) -> SpannedResult<'_, Value> {
     };
     Ok((input, spanned))
 }
+
+fn parse_escape_seq(input: Input<'_>, escape: char) -> ParserResult<'_, char> {
+    let (input, escaped) = context("escape sequence", preceded(char('\\'), char(escape)))(input)?;
+    Ok((input, escaped))
+}
+
+/// Parse newline escape sequence.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_newline;
+///
+/// let (input, newline) = parse_newline(r"\n".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(newline, '\n');
+/// ```
+pub fn parse_newline(input: Input<'_>) -> ParserResult<'_, char> {
+    let (input, _) = parse_escape_seq(input, 'n')?;
+    Ok((input, '\n'))
+}
+
+/// Parse tab escape sequence.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_tab;
+///
+/// let (input, tab) = parse_tab(r"\t".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(tab, '\t');
+/// ```
+pub fn parse_tab(input: Input<'_>) -> ParserResult<'_, char> {
+    let (input, _) = parse_escape_seq(input, 't')?;
+    Ok((input, '\t'))
+}
+
+/// Parse carriage return escape sequence.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_carriage_return;
+///
+/// let (input, carriage_return) = parse_carriage_return(r"\r".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(carriage_return, '\r');
+/// ```
+pub fn parse_carriage_return(input: Input<'_>) -> ParserResult<'_, char> {
+    let (input, _) = parse_escape_seq(input, 'r')?;
+    Ok((input, '\r'))
+}
+
+/// Parse backslash escape sequence.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_backslash;
+///
+/// let (input, backslash) = parse_backslash(r"\\".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(backslash, '\\');
+/// ```
+pub fn parse_backslash(input: Input<'_>) -> ParserResult<'_, char> {
+    let (input, _) = parse_escape_seq(input, '\\')?;
+    Ok((input, '\\'))
+}
+
+/// Parse double quote escape sequence.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_double_quote;
+///
+/// let (input, double_quote) = parse_double_quote(r#"\""#.into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(double_quote, '"');
+/// ```
+pub fn parse_double_quote(input: Input<'_>) -> ParserResult<'_, char> {
+    let (input, _) = parse_escape_seq(input, '"')?;
+    Ok((input, '"'))
+}
+
+/// Parse  quote escape sequence.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_quote;
+///
+/// let (input, quote) = parse_quote(r#"\'"#.into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(quote, '\'');
+/// ```
+pub fn parse_quote(input: Input<'_>) -> ParserResult<'_, char> {
+    let (input, _) = parse_escape_seq(input, '\'')?;
+    Ok((input, '\''))
+}
+
+/// Escape sequence used in strings such as `\n`, `\t`, `\r` and `\"`.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_escaped;
+///
+/// let (input, newline) = parse_escaped(r"\n\t".into()).unwrap();
+/// assert_eq!(input, r"\t");
+/// assert_eq!(newline, '\n');
+///
+/// let (input, tab) = parse_escaped(input).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(tab, '\t');
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if input doesn't start with escape sequence.
+pub fn parse_escaped(input: Input<'_>) -> ParserResult<'_, char> {
+    alt((
+        parse_newline,
+        parse_tab,
+        parse_carriage_return,
+        parse_backslash,
+        parse_double_quote,
+        parse_quote,
+    ))(input)
+}
+
+pub fn parse_string_char(_input: Input<'_>) -> ParserResult<'_, char> {
+    todo!()
+}
+
+pub fn parse_string(_input: Input<'_>) -> SpannedResult<'_, Value> {
+    todo!()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -473,7 +614,7 @@ mod tests {
         parser::literal::{parse_sign, Sign},
     };
 
-    use super::parse_bool;
+    use super::{parse_bool, parse_escaped};
 
     #[test]
     fn test_boolean() {
@@ -501,5 +642,22 @@ mod tests {
         assert_eq!(spanned.ast, Sign::Negative);
         assert_eq!(spanned.start, 0);
         assert_eq!(spanned.end, 1);
+    }
+
+    #[test]
+    fn test_escape_sequences() {
+        let (input, newline) = parse_escaped(r#"\n\r\t\\\"\'"#.into()).unwrap();
+        assert_eq!(newline, '\n');
+        let (input, carriage_return) = parse_escaped(input).unwrap();
+        assert_eq!(carriage_return, '\r');
+        let (input, tab) = parse_escaped(input).unwrap();
+        assert_eq!(tab, '\t');
+        let (input, backslash) = parse_escaped(input).unwrap();
+        assert_eq!(backslash, '\\');
+        let (input, double_quote) = parse_escaped(input).unwrap();
+        assert_eq!(double_quote, '"');
+        let (input, quote) = parse_escaped(input).unwrap();
+        assert_eq!(quote, '\'');
+        assert_eq!(input, "");
     }
 }
