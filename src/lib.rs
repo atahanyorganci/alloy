@@ -1,4 +1,3 @@
-#[deny(missing_debug_implementations)]
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;

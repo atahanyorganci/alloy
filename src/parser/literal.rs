@@ -152,7 +152,7 @@ pub fn parse_digits(input: Input<'_>, radix: u32) -> ParserResult<'_, i64> {
         "digits",
         take_while1(|c: char| c.is_digit(radix) || c == '_'),
     )(input)?;
-    if digits.input.starts_with("_") {
+    if digits.input.starts_with('_') {
         todo!("parse_digits: handle underscores");
     }
     let number = i64::from_str_radix(&digits.input.replace("_", ""), radix).unwrap();
