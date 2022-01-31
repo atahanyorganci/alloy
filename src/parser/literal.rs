@@ -3,10 +3,11 @@ use std::fmt;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
-    character::complete::char,
+    character::complete::{char, none_of},
     combinator::opt,
     error::context,
-    sequence::{preceded, separated_pair},
+    multi::many0,
+    sequence::{delimited, preceded, separated_pair},
 };
 
 use crate::ast::value::Value;
@@ -599,12 +600,59 @@ pub fn parse_escaped(input: Input<'_>) -> ParserResult<'_, char> {
     ))(input)
 }
 
-pub fn parse_string_char(_input: Input<'_>) -> ParserResult<'_, char> {
-    todo!()
+/// Parse single string character escape sequences such as `\n` are
+/// interpreted as newlines.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::parser::literal::parse_string_char;
+///
+/// let (input, a) = parse_string_char("a\\n".into()).unwrap();
+/// assert_eq!(input, "\\n");
+/// assert_eq!(a, 'a');
+///
+/// let (input, newline) = parse_string_char(input).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(newline, '\n');
+/// ```
+pub fn parse_string_char(input: Input<'_>) -> ParserResult<'_, char> {
+    alt((none_of("\n\t\r\\\"\'"), parse_escaped))(input)
 }
 
-pub fn parse_string(_input: Input<'_>) -> SpannedResult<'_, Value> {
-    todo!()
+/// Parse string literal into `Value::String` escape sequences are
+/// interpolated.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::literal::parse_string};
+///
+/// let (input, string) = parse_string(r#""Hello World!\n""#.into()).unwrap();
+/// assert_eq!(input, "");
+/// if let Value::String(s) = string.ast {
+///     assert_eq!(s, "Hello World!\n")
+/// } else {
+///     panic!("`parse_string` should return `Value::String`")
+/// }
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if input doesn't contain a string literal.
+pub fn parse_string(input: Input<'_>) -> SpannedResult<'_, Value> {
+    let start = input.position;
+    let (input, chars) = context(
+        "string",
+        delimited(char('"'), many0(parse_string_char), char('"')),
+    )(input)?;
+    let string = Value::String(chars.into_iter().collect());
+    let spanned = Spanned {
+        ast: string,
+        start,
+        end: input.position,
+    };
+    Ok((input, spanned))
 }
 
 #[cfg(test)]
