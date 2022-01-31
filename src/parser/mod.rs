@@ -1,5 +1,6 @@
 use std::num::{ParseFloatError, ParseIntError};
 
+use nom::{self, error::VerboseError, IResult};
 use pest::{
     error::LineColLocation,
     iterators::{Pair, Pairs},
@@ -8,6 +9,12 @@ use pest::{
 use thiserror::Error;
 
 use crate::ast::statement::Statement;
+
+pub use self::{input::Input, spanned::Spanned};
+
+pub mod input;
+pub mod literal;
+pub mod spanned;
 
 #[derive(Parser)]
 #[grammar = "parser/alloy.pest"]
@@ -22,6 +29,9 @@ pub enum ParserErrorKind {
     #[error("WIP")]
     WIP,
 }
+
+type ParserResult<'a, T> = IResult<Input<'a>, T, VerboseError<Input<'a>>>;
+type SpannedResult<'a, T> = ParserResult<'a, Spanned<T>>;
 
 #[derive(Debug)]
 pub struct ParserError {

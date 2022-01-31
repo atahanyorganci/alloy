@@ -13,6 +13,14 @@ pub enum Value {
     Float(f64),
     True,
     False,
+    Null,
+    String(String),
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Self::Null
+    }
 }
 
 impl fmt::Display for Value {
@@ -22,7 +30,25 @@ impl fmt::Display for Value {
             Self::Float(float) => write!(f, "{}", float),
             Self::True => write!(f, "true"),
             Self::False => write!(f, "false"),
+            Value::Null => write!(f, "null"),
+            Value::String(string) => write!(f, "{}", string),
         }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        if b {
+            Self::True
+        } else {
+            Self::False
+        }
+    }
+}
+
+impl From<String> for Value {
+    fn from(string: String) -> Self {
+        Self::String(string)
     }
 }
 
