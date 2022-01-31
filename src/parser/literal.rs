@@ -655,6 +655,52 @@ pub fn parse_string(input: Input<'_>) -> SpannedResult<'_, Value> {
     Ok((input, spanned))
 }
 
+/// Parse `Value` from input.
+///
+/// # Examples
+///
+/// ```
+/// use alloy::{ast::value::Value, parser::literal::parse_value};
+///
+/// let (input, value) = parse_value(r#""Hello, World!""#.into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value.ast, Value::String("Hello, World!".to_string()));
+///
+/// let (input, value) = parse_value("6".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value.ast, Value::Integer(6));
+///
+/// let (input, value) = parse_value("6.0".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value.ast, Value::Float(6.0));
+///
+/// let (input, value) = parse_value("true".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value.ast, Value::True);
+///
+/// let (input, value) = parse_value("false".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value.ast, Value::False);
+///
+/// let (input, value) = parse_value("null".into()).unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(value.ast, Value::Null);
+/// ```
+pub fn parse_value(input: Input<'_>) -> SpannedResult<'_, Value> {
+    // Notice `parse_float` is called before `parse_integer` since
+    // `parse_integer` can parse whole part of `6.0` as `6`.
+    context(
+        "value",
+        alt((
+            parse_string,
+            parse_float,
+            parse_integer,
+            parse_bool,
+            parse_null,
+        )),
+    )(input)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
