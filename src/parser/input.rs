@@ -110,3 +110,15 @@ impl Slice<RangeFrom<usize>> for Input<'_> {
         Self { position, input }
     }
 }
+
+impl Input<'_> {
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.input.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
