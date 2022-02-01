@@ -12,6 +12,7 @@ use crate::ast::statement::Statement;
 
 pub use self::{input::Input, spanned::Spanned};
 
+pub mod identifier;
 pub mod input;
 pub mod keyword;
 pub mod literal;
