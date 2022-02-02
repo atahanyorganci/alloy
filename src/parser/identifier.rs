@@ -1,4 +1,10 @@
-use nom::{bytes::complete::take_while, combinator::not, error::context, sequence::pair, AsChar};
+use nom::{
+    bytes::complete::{take_while, take_while1},
+    combinator::not,
+    error::context,
+    sequence::pair,
+    AsChar,
+};
 
 use super::{keyword::parse_keyword, Input, SpannedResult};
 
@@ -23,6 +29,7 @@ use super::{keyword::parse_keyword, Input, SpannedResult};
 /// assert_eq!(input, "");
 /// assert_eq!(identifier, "_ignored".to_string());
 ///
+/// assert!(parse_identifier("1i".into()).is_err());
 /// assert!(parse_identifier("if".into()).is_err());
 /// assert!(parse_identifier("var".into()).is_err());
 /// assert!(parse_identifier("const".into()).is_err());
@@ -35,7 +42,7 @@ pub fn parse_identifier(input: Input<'_>) -> SpannedResult<'_, String> {
     let start = input.position;
     let (input, _) = context("identifier", not(parse_keyword))(input)?;
     let (input, (prefix, suffix)) = pair(
-        take_while(|c: char| c.is_alpha() || c == '_'),
+        take_while1(|c: char| c.is_alpha() || c == '_'),
         take_while(|c: char| c.is_alphanum() || c == '_'),
     )(input)?;
     let identifier = format!("{prefix}{suffix}");
