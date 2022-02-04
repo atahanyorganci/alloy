@@ -17,7 +17,7 @@ pub mod binary;
 pub mod identifier;
 pub mod unary;
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum Expression {
     Value(Value),
     Binary(BinaryExpression),
@@ -74,6 +74,17 @@ impl Parse<'_> for Expression {
             _ => unreachable!(),
         };
         Ok(expression)
+    }
+}
+
+impl fmt::Debug for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expression::Value(value) => write!(f, "{value:?}"),
+            Expression::Binary(binary) => write!(f, "{binary:?}"),
+            Expression::Unary(unary) => write!(f, "{unary:?}"),
+            Expression::Identifier(identifier) => write!(f, "{identifier:?}"),
+        }
     }
 }
 

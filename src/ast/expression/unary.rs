@@ -9,7 +9,7 @@ use crate::{
 
 use super::Expression;
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct UnaryExpression {
     pub operator: UnaryOperator,
     pub expression: Box<Expression>,
@@ -50,20 +50,9 @@ impl Parse<'_> for UnaryExpression {
     }
 }
 
-impl fmt::Debug for UnaryExpression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.operator {
-            UnaryOperator::Plus | UnaryOperator::Minus => {
-                write!(f, "({}{:?})", self.operator, self.expression)
-            }
-            UnaryOperator::Not => write!(f, "({} {:?})", self.operator, self.expression),
-        }
-    }
-}
-
 impl fmt::Display for UnaryExpression {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.operator, self.expression)
     }
 }
 

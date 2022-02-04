@@ -32,22 +32,21 @@ lazy_static! {
     };
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct BinaryExpression {
     pub left: Box<Expression>,
     pub operator: BinaryOperator,
     pub right: Box<Expression>,
 }
 
-impl fmt::Debug for BinaryExpression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:?} {} {:?})", self.left, self.operator, self.right)
-    }
-}
-
 impl fmt::Display for BinaryExpression {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!();
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let BinaryExpression {
+            left,
+            operator,
+            right,
+        } = self;
+        write!(f, "({left} {operator} {right})")
     }
 }
 

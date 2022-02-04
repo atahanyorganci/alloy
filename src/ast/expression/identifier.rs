@@ -39,7 +39,9 @@ impl Parse<'_> for IdentifierExpression {
 
 impl fmt::Debug for IdentifierExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ident)
+        f.debug_tuple("IdentifierExpression")
+            .field(&self.ident)
+            .finish()
     }
 }
 
