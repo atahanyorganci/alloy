@@ -18,23 +18,9 @@ use super::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Atom {
+pub enum Expr {
     Identifier(String),
     Value(Value),
-}
-
-impl fmt::Display for Atom {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Atom::Identifier(identifier) => write!(f, "{}", identifier),
-            Atom::Value(value) => write!(f, "{}", value),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expr {
-    Atom(Atom),
     Binary {
         op: Spanned<Operator>,
         lhs: Box<Spanned<Expr>>,
@@ -45,23 +31,24 @@ pub enum Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::Atom(atom) => write!(f, "{atom}"),
+            Expr::Identifier(ident) => write!(f, "{ident}"),
+            Expr::Value(value) => write!(f, "{value}"),
             Expr::Binary { op, lhs, rhs } => write!(f, "({lhs} {op} {rhs})"),
         }
     }
 }
 
-fn parse_identifer_atom(input: Input<'_>) -> SpannedResult<'_, Atom> {
+fn parse_identifer_atom(input: Input<'_>) -> SpannedResult<'_, Expr> {
     map(parse_identifier, |a| {
-        map_spanned(a, |v| Atom::Identifier(v))
+        map_spanned(a, |v| Expr::Identifier(v))
     })(input)
 }
 
-fn parse_value_atom(input: Input<'_>) -> SpannedResult<'_, Atom> {
-    map(parse_value, |a| map_spanned(a, |v| Atom::Value(v)))(input)
+fn parse_value_atom(input: Input<'_>) -> SpannedResult<'_, Expr> {
+    map(parse_value, |a| map_spanned(a, |v| Expr::Value(v)))(input)
 }
 
-pub fn parse_atom(input: Input<'_>) -> SpannedResult<'_, Atom> {
+fn parse_atom(input: Input<'_>) -> SpannedResult<'_, Expr> {
     context("atom", alt((parse_identifer_atom, parse_value_atom)))(input)
 }
 
@@ -70,8 +57,7 @@ pub fn parse_expression(input: Input<'_>) -> SpannedResult<'_, Expr> {
 }
 
 fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Expr> {
-    let (mut input, atom) = parse_atom(input)?;
-    let mut expr = map_spanned(atom, |a| Expr::Atom(a));
+    let (mut input, mut expr) = parse_atom(input)?;
     loop {
         let (next_input, _whitespace) = multispace0(input)?;
         input = next_input;
@@ -115,7 +101,7 @@ fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Ex
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::expression::{parse_expression, Atom, Expr};
+    use crate::parser::expression::{parse_expression, Expr};
 
     macro_rules! assert_expr {
         ($lhs:expr, $rhs:expr) => {
@@ -129,14 +115,14 @@ mod tests {
     fn test_identifier_expression() {
         let (input, identifier) = parse_expression("a".into()).unwrap();
         assert_eq!(input, "");
-        assert_eq!(identifier, Expr::Atom(Atom::Identifier("a".into())));
+        assert_eq!(identifier, Expr::Identifier("a".into()));
     }
 
     #[test]
     fn test_value_expression() {
         let (input, identifier) = parse_expression("1234".into()).unwrap();
         assert_eq!(input, "");
-        assert_eq!(identifier, Expr::Atom(Atom::Value(1234.into())));
+        assert_eq!(identifier, Expr::Value(1234.into()));
     }
 
     #[test]
