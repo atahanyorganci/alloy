@@ -14,7 +14,7 @@ use crate::{
 use super::{identifier::IdentifierExpression, Expression};
 
 lazy_static! {
-    static ref PREC_CLIMBER: PrecClimber<super::Rule> = {
+    static ref PREC_CLIMBER: PrecClimber<Rule> = {
         PrecClimber::new(vec![
             Operator::new(Rule::logical_xor, Assoc::Left),
             Operator::new(Rule::logical_or, Assoc::Left),
