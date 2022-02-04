@@ -6,6 +6,8 @@ use std::{
 
 use nom::{Compare, InputIter, InputLength, InputTake, Slice, UnspecializedInput};
 
+use super::Spanned;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Input<'a> {
     pub input: &'a str,
@@ -125,5 +127,15 @@ impl<'a> Input<'a> {
     #[inline]
     pub fn new(input: &'a str) -> Self {
         input.into()
+    }
+}
+
+impl<'a> Into<Spanned<&'a str>> for Input<'a> {
+    fn into(self) -> Spanned<&'a str> {
+        Spanned {
+            ast: self.input,
+            start: self.position,
+            end: self.position + self.input.len(),
+        }
     }
 }
