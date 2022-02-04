@@ -25,8 +25,11 @@ pub enum Operator {
 }
 
 impl Operator {
-    pub(crate) fn infix_binding_power(&self) -> (u8, u8) {
-        match self {
+    /// Infix operator precedence used in Pratt parser. Left associative operators
+    /// return tuples where left element is greater than the right.
+    #[inline]
+    pub fn infix_bp(&self) -> Option<(u8, u8)> {
+        let bp = match self {
             Operator::Power => (11, 12),
             Operator::Multiply | Operator::Divide | Operator::Modulo => (9, 10),
             Operator::Plus | Operator::Minus => (7, 8),
@@ -36,11 +39,19 @@ impl Operator {
             | Operator::GreaterThanEqual => (5, 6),
             Operator::Equal | Operator::NotEqual => (3, 4),
             Operator::And | Operator::Or | Operator::Xor => (0, 1),
-            Operator::Not => unreachable!("`{}` is not a binary operator", self),
-        }
+            Operator::Not => return None,
+        };
+        Some(bp)
     }
 
-    pub(crate) fn prefix_binding_power(&self) -> ((), u8) {
+    #[inline(always)]
+    pub(crate) fn infix_bp_unchecked(&self) -> (u8, u8) {
+        debug_assert!(self.infix_bp().is_some());
+        unsafe { self.infix_bp().unwrap_unchecked() }
+    }
+
+    #[inline]
+    pub fn prefix_bp(&self) -> Option<((), u8)> {
         let bp = match self {
             Operator::Plus => 10,
             Operator::Minus => 10,
@@ -57,9 +68,15 @@ impl Operator {
             | Operator::NotEqual
             | Operator::And
             | Operator::Or
-            | Operator::Xor => unreachable!("`{}` is not a prefix unary operator", self),
+            | Operator::Xor => return None,
         };
-        ((), bp)
+        Some(((), bp))
+    }
+
+    #[inline(always)]
+    pub(crate) fn prefix_bp_unchecked(&self) -> ((), u8) {
+        debug_assert!(self.prefix_bp().is_some());
+        unsafe { self.prefix_bp().unwrap_unchecked() }
     }
 }
 
@@ -252,6 +269,17 @@ mod tests {
             let (input, parsed) = parse_operator(input).unwrap();
             assert_eq!(input, "");
             assert_eq!(parsed, *op);
+        }
+    }
+
+    /// This segment can use `int_abs_diff` feature #89492
+    /// Assert that infix binding power difference is 1 for every infix operator.
+    #[test]
+    fn test_operator_precendence() {
+        for op in OPERATORS.values() {
+            if let Some((l_bp, r_bp)) = op.infix_bp() {
+                assert_eq!(i32::abs((l_bp - r_bp).into()), 1);
+            }
         }
     }
 }

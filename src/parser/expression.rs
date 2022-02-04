@@ -60,7 +60,7 @@ fn parse_atom(input: Input<'_>) -> SpannedResult<'_, Expr> {
 fn parse_prefix_expression(input: Input<'_>) -> SpannedResult<'_, Expr> {
     let start = input.position;
     let (input, op) = parse_unary_operator(input)?;
-    let ((), r_bp) = op.prefix_binding_power();
+    let ((), r_bp) = op.prefix_bp_unchecked();
     let (input, _whitespace) = multispace0(input)?;
     let (input, operand) = parse_expression_bp(input, r_bp)?;
     let unary = Expr::Unary {
@@ -95,7 +95,7 @@ fn parse_expression_bp(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Expr> 
             Err(err) => return Err(err),
         };
         // Get operator's binding power
-        let (l_bp, r_bp) = op.infix_binding_power();
+        let (l_bp, r_bp) = op.infix_bp_unchecked();
 
         if l_bp < min_bp {
             // Since binding power of operator is lower than `min_bp`, we stop
@@ -149,20 +149,39 @@ mod tests {
     }
 
     #[test]
-    fn test_binary_expression() {
-        // test binary expression with different operators
-        assert_expr!("1 + 2", "(1 + 2)");
-        assert_expr!("1 - 2", "(1 - 2)");
-        assert_expr!("1 * 2", "(1 * 2)");
-        assert_expr!("1 / 2", "(1 / 2)");
-        assert_expr!("1 % 2", "(1 % 2)");
+    fn test_simple_binary_expressions() {
+        assert_expr!("1 + 2", "(1 + 2)"); // addition
+        assert_expr!("1 - 2", "(1 - 2)"); // subtraction
+        assert_expr!("1 * 2", "(1 * 2)"); // multiplication
+        assert_expr!("1 / 2", "(1 / 2)"); // division
+        assert_expr!("1 % 2", "(1 % 2)"); // modulo
+        assert_expr!("1 ** 2", "(1 ** 2)"); // exponentiation
+        assert_expr!("1 and 2", "(1 and 2)"); // logical and
+        assert_expr!("1 or 2", "(1 or 2)"); // logical or
+        assert_expr!("1 xor 2", "(1 xor 2)"); // logical or
+        assert_expr!("1 == 2", "(1 == 2)"); // equality
+        assert_expr!("1 != 2", "(1 != 2)"); // inequality
+        assert_expr!("1 < 2", "(1 < 2)"); // less than
+        assert_expr!("1 <= 2", "(1 <= 2)"); // less than or equal to
+        assert_expr!("1 > 2", "(1 > 2)"); // greater than
+        assert_expr!("1 >= 2", "(1 >= 2)"); // greater than or equal to
+    }
 
+    #[test]
+    fn test_binary_expression() {
+        // Test precedence between operators
         assert_expr!("1 + 2 * 3", "(1 + (2 * 3))");
         assert_expr!("1 * 2 + 3", "((1 * 2) + 3)");
         assert_expr!("1 + 2 * 3 + 4", "((1 + (2 * 3)) + 4)");
         assert_expr!("1 + 2 * 3 + 4 * 5", "((1 + (2 * 3)) + (4 * 5))");
+        assert_expr!("1 * 4 < 2 * 3", "((1 * 4) < (2 * 3))");
+        assert_expr!("1 < 5 and 5 < 9", "((1 < 5) and (5 < 9))");
+        assert_expr!("1 < 5 == 5 < 9", "((1 < 5) == (5 < 9))");
+        assert_expr!("2 * 4 == 8", "((2 * 4) == 8)");
+        assert_expr!("2 * 4 < 8", "((2 * 4) < 8)");
+        assert_expr!("2 * 4 and 8 > 5", "((2 * 4) and (8 > 5))");
+        assert_expr!("1 * 2 * 3 * 4 + 5", "((((1 * 2) * 3) * 4) + 5)");
         assert_expr!("1 + 2 * 3 + 4 * 5 + 6", "(((1 + (2 * 3)) + (4 * 5)) + 6)");
-
         assert_expr!("1 + 5 * 6 < 2 + 3", "((1 + (5 * 6)) < (2 + 3))");
         assert_expr!(
             "1 + 5 * 6 < 2 + 3 and true",
