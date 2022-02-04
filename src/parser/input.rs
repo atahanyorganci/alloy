@@ -111,7 +111,7 @@ impl Slice<RangeFrom<usize>> for Input<'_> {
     }
 }
 
-impl Input<'_> {
+impl<'a> Input<'a> {
     #[inline]
     pub fn len(&self) -> usize {
         self.input.len()
@@ -120,5 +120,10 @@ impl Input<'_> {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[inline]
+    pub fn new(input: &'a str) -> Self {
+        input.into()
     }
 }
