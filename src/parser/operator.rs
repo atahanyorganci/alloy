@@ -24,6 +24,23 @@ pub enum Operator {
     Not,
 }
 
+impl Operator {
+    pub fn bp(&self) -> (u8, u8) {
+        match self {
+            Operator::Power => (8, 9),
+            Operator::Multiply | Operator::Divide | Operator::Modulo => (6, 7),
+            Operator::Plus | Operator::Minus => (4, 5),
+            Operator::LessThan
+            | Operator::LessThanEqual
+            | Operator::GreaterThan
+            | Operator::GreaterThanEqual => (3, 2),
+            Operator::Equal | Operator::NotEqual => (2, 1),
+            Operator::And | Operator::Or | Operator::Xor => (0, 1),
+            Operator::Not => todo!(),
+        }
+    }
+}
+
 impl fmt::Display for Operator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

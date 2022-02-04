@@ -1,0 +1,172 @@
+use std::fmt;
+
+use nom::{
+    branch::alt,
+    character::complete::multispace0,
+    combinator::{map, opt, peek},
+    error::context,
+};
+
+use crate::ast::value::Value;
+
+use super::{
+    identifier::parse_identifier,
+    literal::parse_value,
+    map_spanned,
+    operator::{parse_operator, Operator},
+    Input, Spanned, SpannedResult,
+};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Atom {
+    Identifier(String),
+    Value(Value),
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Atom::Identifier(identifier) => write!(f, "{}", identifier),
+            Atom::Value(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr {
+    Atom(Atom),
+    Binary {
+        op: Spanned<Operator>,
+        lhs: Box<Spanned<Expr>>,
+        rhs: Box<Spanned<Expr>>,
+    },
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expr::Atom(atom) => write!(f, "{atom}"),
+            Expr::Binary { op, lhs, rhs } => write!(f, "({lhs} {op} {rhs})"),
+        }
+    }
+}
+
+fn parse_identifer_atom(input: Input<'_>) -> SpannedResult<'_, Atom> {
+    map(parse_identifier, |a| {
+        map_spanned(a, |v| Atom::Identifier(v))
+    })(input)
+}
+
+fn parse_value_atom(input: Input<'_>) -> SpannedResult<'_, Atom> {
+    map(parse_value, |a| map_spanned(a, |v| Atom::Value(v)))(input)
+}
+
+pub fn parse_atom(input: Input<'_>) -> SpannedResult<'_, Atom> {
+    context("atom", alt((parse_identifer_atom, parse_value_atom)))(input)
+}
+
+pub fn parse_expression(input: Input<'_>) -> SpannedResult<'_, Expr> {
+    parse_binary_expression(input, 0)
+}
+
+fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Expr> {
+    let (mut input, atom) = parse_atom(input)?;
+    let mut expr = map_spanned(atom, |a| Expr::Atom(a));
+    loop {
+        let (next_input, _whitespace) = multispace0(input)?;
+        input = next_input;
+
+        // Use `peek` to avoid consuming if binding power of operator is lower than `min_bp`.
+        let op = match peek(opt(parse_operator))(input) {
+            Ok((next_input, Some(op))) => {
+                input = next_input;
+                op
+            }
+            Ok((next_input, None)) => return Ok((next_input, expr)),
+            Err(err) => return Err(err),
+        };
+        // Get operator's binding power
+        let (l_bp, r_bp) = op.ast.bp();
+
+        if l_bp < min_bp {
+            // Since binding power of operator is lower than `min_bp`, we stop
+            return Ok((input, expr));
+        }
+        // Consume operator token
+        input = parse_operator(input)?.0;
+
+        let (next_input, _whitespace) = multispace0(input)?;
+        input = next_input;
+
+        // Parse right-hand side of expression
+        let (next_input, rhs) = parse_binary_expression(input, r_bp)?;
+        input = next_input;
+        expr = Spanned {
+            start: expr.start,
+            end: rhs.end,
+            ast: Expr::Binary {
+                op,
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+            },
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::expression::{parse_expression, Atom, Expr};
+
+    macro_rules! assert_expr {
+        ($lhs:expr, $rhs:expr) => {
+            let (input, expr) = parse_expression($lhs.into()).unwrap();
+            assert_eq!(input, "");
+            assert_eq!(format!("{expr}"), $rhs.to_string());
+        };
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let (input, identifier) = parse_expression("a".into()).unwrap();
+        assert_eq!(input, "");
+        assert_eq!(identifier, Expr::Atom(Atom::Identifier("a".into())));
+    }
+
+    #[test]
+    fn test_value_expression() {
+        let (input, identifier) = parse_expression("1234".into()).unwrap();
+        assert_eq!(input, "");
+        assert_eq!(identifier, Expr::Atom(Atom::Value(1234.into())));
+    }
+
+    #[test]
+    fn test_binary_expression() {
+        // test binary expression with different operators
+        assert_expr!("1 + 2", "(1 + 2)");
+        assert_expr!("1 - 2", "(1 - 2)");
+        assert_expr!("1 * 2", "(1 * 2)");
+        assert_expr!("1 / 2", "(1 / 2)");
+        assert_expr!("1 % 2", "(1 % 2)");
+
+        assert_expr!("1 + 2 * 3", "(1 + (2 * 3))");
+        assert_expr!("1 * 2 + 3", "((1 * 2) + 3)");
+        assert_expr!("1 + 2 * 3 + 4", "((1 + (2 * 3)) + 4)");
+        assert_expr!("1 + 2 * 3 + 4 * 5", "((1 + (2 * 3)) + (4 * 5))");
+        assert_expr!("1 + 2 * 3 + 4 * 5 + 6", "(((1 + (2 * 3)) + (4 * 5)) + 6)");
+
+        assert_expr!("1 + 5 * 6 < 2 + 3", "((1 + (5 * 6)) < (2 + 3))");
+        assert_expr!(
+            "1 + 5 * 6 < 2 + 3 and true",
+            "(((1 + (5 * 6)) < (2 + 3)) and true)"
+        );
+        assert_expr!(
+            "1 + 5 * 6 < 2 + 3 and true",
+            "(((1 + (5 * 6)) < (2 + 3)) and true)"
+        );
+    }
+
+    #[test]
+    fn test_associativity_of_exponent() {
+        assert_expr!("1 ** 2 ** 3", "((1 ** 2) ** 3)");
+    }
+}
