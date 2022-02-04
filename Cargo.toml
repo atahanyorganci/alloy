@@ -2,7 +2,7 @@
 name = "alloy"
 version = "0.1.0"
 authors = ["Atahan Yorgancı <atahanyorganci@hotmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 nom = "7.1.0"

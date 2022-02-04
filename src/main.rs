@@ -58,7 +58,7 @@ fn main() {
             Ok(line) => alloy.consume(&mut compiler, line.as_str()),
             Err(ReadlineError::Eof) => break,
             Err(ReadlineError::Interrupted) => break,
-            Err(err) => eprintln!("Unexpected error encountered {}.", err),
+            Err(err) => eprintln!("Unexpected error encountered {err}."),
         }
     }
 }

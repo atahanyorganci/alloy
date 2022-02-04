@@ -80,10 +80,10 @@ impl Parse<'_> for Expression {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::Value(value) => write!(f, "{}", value),
-            Expression::Binary(binary) => write!(f, "{}", binary),
-            Expression::Unary(unary) => write!(f, "{}", unary),
-            Expression::Identifier(identifier) => write!(f, "{}", identifier),
+            Expression::Value(value) => write!(f, "{value}"),
+            Expression::Binary(binary) => write!(f, "{binary}"),
+            Expression::Unary(unary) => write!(f, "{unary}"),
+            Expression::Identifier(identifier) => write!(f, "{identifier}"),
         }
     }
 }

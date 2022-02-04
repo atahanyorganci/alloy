@@ -26,12 +26,12 @@ impl Default for Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Integer(int) => write!(f, "{}", int),
-            Self::Float(float) => write!(f, "{}", float),
+            Self::Integer(int) => write!(f, "{int}"),
+            Self::Float(float) => write!(f, "{float}"),
             Self::True => write!(f, "true"),
             Self::False => write!(f, "false"),
             Value::Null => write!(f, "null"),
-            Value::String(string) => write!(f, "{}", string),
+            Value::String(string) => write!(f, "{string}"),
         }
     }
 }
