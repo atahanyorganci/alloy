@@ -72,7 +72,7 @@ fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Ex
             Err(err) => return Err(err),
         };
         // Get operator's binding power
-        let (l_bp, r_bp) = op.ast.bp();
+        let (l_bp, r_bp) = op.bp();
 
         if l_bp < min_bp {
             // Since binding power of operator is lower than `min_bp`, we stop
