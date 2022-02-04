@@ -13,7 +13,7 @@ use super::{
     identifier::parse_identifier,
     literal::parse_value,
     map_spanned,
-    operator::{parse_operator, Operator},
+    operator::{parse_operator, parse_unary_operator, Operator},
     Input, Spanned, SpannedResult,
 };
 
@@ -26,6 +26,10 @@ pub enum Expr {
         lhs: Box<Spanned<Expr>>,
         rhs: Box<Spanned<Expr>>,
     },
+    Unary {
+        op: Spanned<Operator>,
+        operand: Box<Spanned<Expr>>,
+    },
 }
 
 impl fmt::Display for Expr {
@@ -34,6 +38,7 @@ impl fmt::Display for Expr {
             Expr::Identifier(ident) => write!(f, "{ident}"),
             Expr::Value(value) => write!(f, "{value}"),
             Expr::Binary { op, lhs, rhs } => write!(f, "({lhs} {op} {rhs})"),
+            Expr::Unary { op, operand } => write!(f, "({op} {operand})"),
         }
     }
 }
@@ -52,12 +57,30 @@ fn parse_atom(input: Input<'_>) -> SpannedResult<'_, Expr> {
     context("atom", alt((parse_identifer_atom, parse_value_atom)))(input)
 }
 
-pub fn parse_expression(input: Input<'_>) -> SpannedResult<'_, Expr> {
-    parse_binary_expression(input, 0)
+fn parse_prefix_expression(input: Input<'_>) -> SpannedResult<'_, Expr> {
+    let start = input.position;
+    let (input, op) = parse_unary_operator(input)?;
+    let ((), r_bp) = op.prefix_binding_power();
+    let (input, _whitespace) = multispace0(input)?;
+    let (input, operand) = parse_expression_bp(input, r_bp)?;
+    let unary = Expr::Unary {
+        op,
+        operand: Box::from(operand),
+    };
+    let spanned = Spanned {
+        ast: unary,
+        start,
+        end: input.position,
+    };
+    Ok((input, spanned))
 }
 
-fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Expr> {
-    let (mut input, mut expr) = parse_atom(input)?;
+pub fn parse_expression(input: Input<'_>) -> SpannedResult<'_, Expr> {
+    parse_expression_bp(input, 0)
+}
+
+fn parse_expression_bp(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Expr> {
+    let (mut input, mut expr) = alt((parse_prefix_expression, parse_atom))(input)?;
     loop {
         let (next_input, _whitespace) = multispace0(input)?;
         input = next_input;
@@ -72,7 +95,7 @@ fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Ex
             Err(err) => return Err(err),
         };
         // Get operator's binding power
-        let (l_bp, r_bp) = op.bp();
+        let (l_bp, r_bp) = op.infix_binding_power();
 
         if l_bp < min_bp {
             // Since binding power of operator is lower than `min_bp`, we stop
@@ -85,7 +108,7 @@ fn parse_binary_expression(input: Input<'_>, min_bp: u8) -> SpannedResult<'_, Ex
         input = next_input;
 
         // Parse right-hand side of expression
-        let (next_input, rhs) = parse_binary_expression(input, r_bp)?;
+        let (next_input, rhs) = parse_expression_bp(input, r_bp)?;
         input = next_input;
         expr = Spanned {
             start: expr.start,
@@ -149,6 +172,16 @@ mod tests {
             "1 + 5 * 6 < 2 + 3 and true",
             "(((1 + (5 * 6)) < (2 + 3)) and true)"
         );
+    }
+
+    #[test]
+    fn test_unary_expressions() {
+        assert_expr!("not true", "(not true)");
+        assert_expr!("+4", "(+ 4)");
+        assert_expr!("-4", "(- 4)");
+        assert_expr!("--4", "(- (- 4))");
+        assert_expr!("true and not false", "(true and (not false))");
+        assert_expr!("not false and true", "((not false) and true)");
     }
 
     #[test]

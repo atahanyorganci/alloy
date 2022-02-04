@@ -25,19 +25,41 @@ pub enum Operator {
 }
 
 impl Operator {
-    pub fn bp(&self) -> (u8, u8) {
+    pub(crate) fn infix_binding_power(&self) -> (u8, u8) {
         match self {
-            Operator::Power => (8, 9),
-            Operator::Multiply | Operator::Divide | Operator::Modulo => (6, 7),
-            Operator::Plus | Operator::Minus => (4, 5),
+            Operator::Power => (11, 12),
+            Operator::Multiply | Operator::Divide | Operator::Modulo => (9, 10),
+            Operator::Plus | Operator::Minus => (7, 8),
             Operator::LessThan
             | Operator::LessThanEqual
             | Operator::GreaterThan
-            | Operator::GreaterThanEqual => (3, 2),
-            Operator::Equal | Operator::NotEqual => (2, 1),
+            | Operator::GreaterThanEqual => (5, 6),
+            Operator::Equal | Operator::NotEqual => (3, 4),
             Operator::And | Operator::Or | Operator::Xor => (0, 1),
-            Operator::Not => todo!(),
+            Operator::Not => unreachable!("`{}` is not a binary operator", self),
         }
+    }
+
+    pub(crate) fn prefix_binding_power(&self) -> ((), u8) {
+        let bp = match self {
+            Operator::Plus => 10,
+            Operator::Minus => 10,
+            Operator::Not => 2,
+            Operator::Multiply
+            | Operator::Divide
+            | Operator::Modulo
+            | Operator::Power
+            | Operator::LessThan
+            | Operator::LessThanEqual
+            | Operator::GreaterThan
+            | Operator::GreaterThanEqual
+            | Operator::Equal
+            | Operator::NotEqual
+            | Operator::And
+            | Operator::Or
+            | Operator::Xor => unreachable!("`{}` is not a prefix unary operator", self),
+        };
+        ((), bp)
     }
 }
 
@@ -169,6 +191,18 @@ pub fn parse_xor(input: Input<'_>) -> ParserResult<'_, Operator> {
 
 pub fn parse_not(input: Input<'_>) -> ParserResult<'_, Operator> {
     map(keyword::parse_not, |_| Operator::Not)(input)
+}
+
+pub fn parse_unary_operator(input: Input<'_>) -> SpannedResult<'_, Operator> {
+    let start = input.position;
+    let (input, operator) =
+        context("unary operator", alt((parse_plus, parse_minus, parse_not)))(input)?;
+    let spanned = Spanned {
+        ast: operator,
+        start,
+        end: input.position,
+    };
+    Ok((input, spanned))
 }
 
 /// Parse an operator and convert it into `Operator`.
