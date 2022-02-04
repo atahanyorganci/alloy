@@ -12,6 +12,12 @@ pub struct IdentifierExpression {
     pub ident: String,
 }
 
+impl From<String> for IdentifierExpression {
+    fn from(ident: String) -> Self {
+        Self { ident }
+    }
+}
+
 impl Compile for IdentifierExpression {
     fn compile(&self, compiler: &mut Compiler) -> CompilerResult<()> {
         let instruction = match compiler.get_identifier(&self.ident) {
