@@ -5,6 +5,8 @@ extern crate pest_derive;
 #[macro_use]
 extern crate lazy_static;
 extern crate structopt;
+#[macro_use]
+extern crate phf;
 
 pub mod ast;
 pub mod compiler;

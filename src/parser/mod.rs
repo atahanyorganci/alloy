@@ -12,8 +12,12 @@ use crate::ast::statement::Statement;
 
 pub use self::{input::Input, spanned::Spanned};
 
+pub mod expression;
+pub mod identifier;
 pub mod input;
+pub mod keyword;
 pub mod literal;
+pub mod operator;
 pub mod spanned;
 
 #[derive(Parser)]
@@ -106,5 +110,16 @@ pub fn parse(input: &str) -> Result<Vec<Statement>, ParserError> {
             kind: ParserErrorKind::WIP,
             location: e.line_col,
         }),
+    }
+}
+
+pub fn map_spanned<T, U, F>(Spanned { ast, start, end }: Spanned<T>, f: F) -> Spanned<U>
+where
+    F: FnOnce(T) -> U,
+{
+    Spanned {
+        ast: f(ast),
+        start,
+        end,
     }
 }
