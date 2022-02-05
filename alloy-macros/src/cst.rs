@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{ItemEnum, ItemStruct};
+use syn::{Field, Fields, ItemEnum, ItemStruct};
 
 // Strip the `CST` suffix from the given identifier if it exists, otherwise
 // add `AST` suffix.
@@ -14,6 +14,22 @@ fn get_ast_ident(ident: &Ident) -> Ident {
     Ident::new(&ast, ident.span())
 }
 
+// Check if field has `#[space]`
+fn is_space(field: &Field) -> bool {
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path.segments.len() == 1 && attr.path.segments[0].ident == "space")
+}
+
+// Return vector of fields that are not `#[space]`
+fn process_fields<T>(fields: T) -> Vec<Field>
+where
+    T: Iterator<Item = Field>,
+{
+    fields.filter(|field| !is_space(field)).collect()
+}
+
 pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
     let ItemStruct {
         attrs,
@@ -21,14 +37,23 @@ pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
         struct_token,
         ident,
         generics,
-        fields: _,
+        fields,
         semi_token,
     } = s;
     let ast_ident = get_ast_ident(&ident);
+
+    let fields = match fields {
+        Fields::Named(named) => named.named.into_iter(),
+        Fields::Unnamed(unnamed) => unnamed.unnamed.into_iter(),
+        Fields::Unit => panic!("Only named fields are supported"),
+    };
+    let fields = process_fields(fields);
+
     let fields = if semi_token.is_some() {
-        quote! {();}
+        quote! {(#(#fields),*);}
     } else {
-        quote! {{}}
+        eprintln!("{fields:#?}");
+        quote! {{#(#fields),*}}
     };
     quote! {
         #(#attrs)*
