@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned, Expr, Item, LitStr};
 
+mod cst;
 mod expand;
 
 #[proc_macro]
@@ -32,8 +33,8 @@ pub fn assert_expr(input: TokenStream) -> TokenStream {
 pub fn cst_to_ast(input: TokenStream) -> TokenStream {
     let s = parse_macro_input!(input as Item);
     let tokens = match s {
-        Item::Enum(_e) => quote! {},
-        Item::Struct(_s) => quote! {},
+        Item::Enum(e) => cst::enum_ast(e),
+        Item::Struct(s) => cst::struct_ast(s),
         _ => panic!("only enums and structs can derive AST"),
     };
     tokens.into()
