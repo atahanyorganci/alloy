@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, Expr, LitStr};
+use syn::{parse_macro_input, spanned::Spanned, Expr, Item, LitStr};
 
 mod expand;
 
@@ -26,4 +26,15 @@ pub fn assert_expr(input: TokenStream) -> TokenStream {
         );
     };
     gen.into()
+}
+
+#[proc_macro_derive(AST, attributes(space))]
+pub fn cst_to_ast(input: TokenStream) -> TokenStream {
+    let s = parse_macro_input!(input as Item);
+    let tokens = match s {
+        Item::Enum(_e) => quote! {},
+        Item::Struct(_s) => quote! {},
+        _ => panic!("only enums and structs can derive AST"),
+    };
+    tokens.into()
 }
