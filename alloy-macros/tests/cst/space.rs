@@ -1,8 +1,7 @@
-use alloy::parser::Spanned;
 use alloy_macros::AST;
 
 #[derive(AST)]
-pub struct SomeCST<'a> {
+pub struct NodeCST {
     #[space]
     int: i64,
     #[space]
@@ -11,7 +10,7 @@ pub struct SomeCST<'a> {
 }
 
 fn main() {
-    let _ = Some {
+    let _ = Node {
         s: "Hello World!".to_string(),
     };
 }
