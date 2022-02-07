@@ -1,8 +1,8 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::{
-    AngleBracketedGenericArguments, Field, Fields, GenericArgument, ItemEnum, ItemStruct, Path,
-    PathArguments, Type, TypePath, Variant,
+    punctuated::Punctuated, AngleBracketedGenericArguments, Field, Fields, GenericArgument,
+    ItemEnum, ItemStruct, Path, PathArguments, Type, TypePath, Variant,
 };
 
 // Strip the `CST` suffix from the given identifier if it exists, otherwise
@@ -50,38 +50,79 @@ fn is_spanned(ty: &Type) -> bool {
     }
 }
 
+fn is_boxed(ty: &Type) -> bool {
+    if let Type::Path(TypePath { qself, path }) = ty {
+        if qself.is_some() {
+            return false;
+        }
+        compare_path(path, vec!["std", "boxed", "Box"])
+    } else {
+        false
+    }
+}
+
+fn replace_type(ty: &mut Type, new_ty: Type) {
+    let segment = if let Type::Path(tp) = ty {
+        tp.path.segments.last_mut().unwrap()
+    } else {
+        panic!("only `TypePath`'s generic arguments can be replaced.")
+    };
+    if let PathArguments::AngleBracketed(a) = &mut segment.arguments {
+        let mut args = Punctuated::new();
+        args.push(GenericArgument::Type(new_ty));
+        a.args = args;
+    }
+}
+
 fn map_field(mut field: Field) -> Field {
-    field.ty = extract_from_spanned(field.ty);
+    if is_spanned(&field.ty) {
+        field.ty = if let Ok(ty) = try_extract_generic(field.ty) {
+            ty
+        } else {
+            panic!("`Spanned<T>` type must be generic with single arg");
+        };
+    }
+    if is_boxed(&field.ty) {
+        let boxed = match try_extract_generic(field.ty.clone()) {
+            Ok(ty) => ty,
+            Err(_) => {
+                panic!("`Box<T>` type must be generic with single arg");
+            }
+        };
+        if is_cst(&boxed) {
+            replace_type(&mut field.ty, map_cst(boxed))
+        }
+    }
     field
 }
 
-fn extract_from_spanned(ty: Type) -> Type {
+fn try_extract_generic(ty: Type) -> Result<Type, ()> {
     let segment = if let Type::Path(TypePath { qself: _, path }) = ty {
         path.segments.into_iter().last().unwrap()
     } else {
         unreachable!()
     };
     if let PathArguments::AngleBracketed(args) = segment.arguments {
-        extract_single_generic_type(args)
+        try_extract_single_generic_arg(args)
     } else {
-        panic!("`Spanned<T>` takes only a single type argument.")
+        Err(())
     }
 }
 
-fn extract_single_generic_type(args: AngleBracketedGenericArguments) -> Type {
+fn try_extract_single_generic_arg(args: AngleBracketedGenericArguments) -> Result<Type, ()> {
     let mut args = args.args.into_iter();
     let arg = if let Some(arg) = args.next() {
         arg
     } else {
-        panic!("`Spanned<T>` takes only a single type argument.")
+        return Err(());
     };
     if let Some(_) = args.next() {
-        panic!("`Spanned<T>` takes only a single type argument.")
+        return Err(());
     }
     if let GenericArgument::Type(t) = arg {
-        t
+        Ok(t)
     } else {
-        panic!("`Spanned<T>` takes only a single type argument.")
+        return Err(());
     }
 }
 
@@ -92,7 +133,7 @@ where
 {
     fields
         .filter(|field| !is_space(field))
-        .map(|f| if is_spanned(&f.ty) { map_field(f) } else { f })
+        .map(map_field)
         .collect()
 }
 
@@ -130,10 +171,11 @@ pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
 fn is_cst(ty: &Type) -> bool {
     if let Type::Path(TypePath { qself: _, path }) = ty {
         if path.leading_colon.is_some() {
-            return false;
+            false
+        } else {
+            let segment = path.segments.last().unwrap();
+            segment.ident.to_string().ends_with("CST")
         }
-        let segment = path.segments.last().unwrap();
-        segment.ident.to_string().ends_with("CST")
     } else {
         false
     }
@@ -170,7 +212,11 @@ where
             if is_cst(&f.ty) {
                 f.ty = map_cst(f.ty);
             } else if is_spanned(&f.ty) {
-                f.ty = extract_from_spanned(f.ty);
+                f.ty = if let Ok(ty) = try_extract_generic(f.ty) {
+                    ty
+                } else {
+                    panic!("`Spanned<T>` takes only a single type argument.")
+                }
             }
             f
         })
@@ -199,8 +245,6 @@ where
             }
             Fields::Unit => quote! {},
         };
-
-        eprintln!("{} {:?}", ident, fields);
         stream.extend(quote! {
             #(#attrs)*
             #ident #fields,
