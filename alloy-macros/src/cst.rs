@@ -2,7 +2,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::{
     AngleBracketedGenericArguments, Field, Fields, GenericArgument, ItemEnum, ItemStruct, Path,
-    PathArguments, Type, TypePath,
+    PathArguments, Type, TypePath, Variant,
 };
 
 // Strip the `CST` suffix from the given identifier if it exists, otherwise
@@ -86,7 +86,7 @@ fn extract_single_generic_type(args: AngleBracketedGenericArguments) -> Type {
 }
 
 // Return vector of fields that are not `#[space]`
-fn process_fields<T>(fields: T) -> Vec<Field>
+fn process_struct_fields<T>(fields: T) -> Vec<Field>
 where
     T: Iterator<Item = Field>,
 {
@@ -113,7 +113,7 @@ pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
         Fields::Unnamed(unnamed) => unnamed.unnamed.into_iter(),
         Fields::Unit => panic!("Only named fields are supported"),
     };
-    let fields = process_fields(fields);
+    let fields = process_struct_fields(fields);
 
     let fields = if semi_token.is_some() {
         quote! {(#(#fields),*);}
@@ -127,6 +127,98 @@ pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
     }
 }
 
+fn is_cst(ty: &Type) -> bool {
+    if let Type::Path(TypePath { qself: _, path }) = ty {
+        if path.leading_colon.is_some() {
+            return false;
+        }
+        let segment = path.segments.last().unwrap();
+        segment.ident.to_string().ends_with("CST")
+    } else {
+        false
+    }
+}
+
+fn strip_cst_suffix(ident: &Ident) -> Ident {
+    let cst = ident.to_string();
+    let ast = if let Some(s) = cst.strip_suffix("CST") {
+        s.to_string()
+    } else {
+        panic!("`{}` is not a valid CST identifier", cst)
+    };
+    Ident::new(&ast, ident.span())
+}
+
+fn map_cst(mut ty: Type) -> Type {
+    if let Type::Path(TypePath { qself: _, path }) = &mut ty {
+        let last = path.segments.last_mut().unwrap();
+        last.ident = strip_cst_suffix(&last.ident);
+        ty
+    } else {
+        let ty = quote! {#ty}.to_string();
+        panic!("`{ty}` is not a CST type")
+    }
+}
+
+fn process_enum_fields<T>(fields: T) -> Vec<Field>
+where
+    T: Iterator<Item = Field>,
+{
+    // Remove `CST` suffix from each field's type identifier
+    fields
+        .map(
+            |Field {
+                 attrs,
+                 vis,
+                 ident,
+                 colon_token,
+                 ty,
+             }| {
+                let ty = if is_cst(&ty) { map_cst(ty) } else { ty };
+                Field {
+                    attrs,
+                    vis,
+                    ident,
+                    colon_token,
+                    ty,
+                }
+            },
+        )
+        .collect()
+}
+
+fn process_variants<T>(variants: T) -> TokenStream
+where
+    T: Iterator<Item = Variant>,
+{
+    let mut stream = TokenStream::new();
+    for variant in variants {
+        let Variant {
+            attrs,
+            ident,
+            fields,
+            discriminant,
+        } = variant;
+        assert!(discriminant.is_none());
+
+        let fields = match fields {
+            Fields::Named(_) => panic!("named fields in enums are not supported"),
+            Fields::Unnamed(unnamed) => {
+                let fields = process_enum_fields(unnamed.unnamed.into_iter());
+                quote! {(#(#fields),*)}
+            }
+            Fields::Unit => quote! {},
+        };
+
+        eprintln!("{} {:?}", ident, fields);
+        stream.extend(quote! {
+            #(#attrs)*
+            #ident #fields,
+        });
+    }
+    stream
+}
+
 pub(super) fn enum_ast(e: ItemEnum) -> TokenStream {
     let ItemEnum {
         attrs,
@@ -135,12 +227,14 @@ pub(super) fn enum_ast(e: ItemEnum) -> TokenStream {
         ident,
         generics,
         brace_token: _,
-        variants: _,
+        variants,
     } = e;
     let ast_ident = get_ast_ident(&ident);
+    let variants = process_variants(variants.into_iter());
     quote! {
         #(#attrs)*
         #vis #enum_token #ast_ident #generics {
+            #variants
         }
     }
 }
