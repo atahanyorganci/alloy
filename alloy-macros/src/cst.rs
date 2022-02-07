@@ -166,24 +166,14 @@ where
 {
     // Remove `CST` suffix from each field's type identifier
     fields
-        .map(
-            |Field {
-                 attrs,
-                 vis,
-                 ident,
-                 colon_token,
-                 ty,
-             }| {
-                let ty = if is_cst(&ty) { map_cst(ty) } else { ty };
-                Field {
-                    attrs,
-                    vis,
-                    ident,
-                    colon_token,
-                    ty,
-                }
-            },
-        )
+        .map(|mut f| {
+            if is_cst(&f.ty) {
+                f.ty = map_cst(f.ty);
+            } else if is_spanned(&f.ty) {
+                f.ty = extract_from_spanned(f.ty);
+            }
+            f
+        })
         .collect()
 }
 
