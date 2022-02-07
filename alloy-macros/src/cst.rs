@@ -90,7 +90,9 @@ fn map_field(mut field: Field) -> Field {
             }
         };
         if is_cst(&boxed) {
-            replace_type(&mut field.ty, map_cst(boxed))
+            let mut ast = map_cst(boxed);
+            remove_generics(&mut ast);
+            replace_type(&mut field.ty, ast);
         }
     }
     field
@@ -137,13 +139,23 @@ where
         .collect()
 }
 
+fn remove_generics(ty: &mut Type) {
+    if let Type::Path(TypePath { qself, path }) = ty {
+        if qself.is_some() {
+            return;
+        }
+        let last = path.segments.last_mut().unwrap();
+        last.arguments = PathArguments::None;
+    }
+}
+
 pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
     let ItemStruct {
         attrs,
         vis,
         struct_token,
         ident,
-        generics,
+        generics: _,
         fields,
         semi_token,
     } = s;
@@ -163,7 +175,7 @@ pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
     };
     quote! {
         #(#attrs)*
-        #vis #struct_token #ast_ident #generics
+        #vis #struct_token #ast_ident
         #fields
     }
 }
@@ -218,6 +230,7 @@ where
                     panic!("`Spanned<T>` takes only a single type argument.")
                 }
             }
+            remove_generics(&mut f.ty);
             f
         })
         .collect()
@@ -259,7 +272,7 @@ pub(super) fn enum_ast(e: ItemEnum) -> TokenStream {
         vis,
         enum_token,
         ident,
-        generics,
+        generics: _,
         brace_token: _,
         variants,
     } = e;
@@ -267,7 +280,7 @@ pub(super) fn enum_ast(e: ItemEnum) -> TokenStream {
     let variants = process_variants(variants.into_iter());
     quote! {
         #(#attrs)*
-        #vis #enum_token #ast_ident #generics {
+        #vis #enum_token #ast_ident {
             #variants
         }
     }

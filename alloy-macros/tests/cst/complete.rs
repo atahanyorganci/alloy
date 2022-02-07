@@ -15,6 +15,7 @@ pub enum ExprCST<'a> {
 #[derive(AST)]
 pub struct NumCST(Spanned<i64>);
 
+#[allow(dead_code)]
 #[derive(AST)]
 pub struct BinaryCST<'a> {
     lhs: Spanned<Box<ExprCST<'a>>>,
@@ -28,8 +29,8 @@ pub struct BinaryCST<'a> {
 
 fn main() {
     let _ = Binary {
-        lhs: Box::from(Expr::Num(1)),
+        lhs: Box::from(Expr::Num(Num(1))),
         op: Op::Plus,
-        rhs: Box::from(Expr::Num(2)),
+        rhs: Box::from(Expr::Num(Num(2))),
     };
 }
