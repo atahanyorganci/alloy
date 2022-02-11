@@ -1,10 +1,5 @@
 use alloy_macros::AST;
 
-pub enum Op {
-    Plus,
-    Minus,
-}
-
 #[derive(AST)]
 pub enum ExprCST {}
 
@@ -15,6 +10,8 @@ pub struct NumCST();
 pub struct BinaryCST {}
 
 fn main() {
-    let _num = Num();
-    let _binary = Binary {};
+    let _ = Num();
+    let _: Num = NumCST().into();
+    let _ = Binary {};
+    let _: Binary = BinaryCST {}.into();
 }

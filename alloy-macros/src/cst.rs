@@ -1,8 +1,9 @@
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, AngleBracketedGenericArguments, Field, Fields, GenericArgument,
-    ItemEnum, ItemStruct, Path, PathArguments, Type, TypePath, Variant,
+    punctuated::Punctuated, AngleBracketedGenericArguments, Field, Fields, FieldsNamed,
+    FieldsUnnamed, GenericArgument, Generics, Index, ItemEnum, ItemStruct, Path, PathArguments,
+    Type, TypePath, Variant,
 };
 
 // Strip the `CST` suffix from the given identifier if it exists, otherwise
@@ -74,28 +75,53 @@ fn replace_type(ty: &mut Type, new_ty: Type) {
     }
 }
 
-fn map_field(mut field: Field) -> Field {
-    if is_spanned(&field.ty) {
-        field.ty = if let Ok(ty) = try_extract_generic(field.ty) {
-            ty
-        } else {
-            panic!("`Spanned<T>` type must be generic with single arg");
-        };
+fn map_field(mut field: Field) -> (FieldType, Field) {
+    // Check if field has `#[space]` if so return `FieldType::Space` and field
+    if is_space(&field) {
+        return (FieldType::Space, field);
     }
-    if is_boxed(&field.ty) {
-        let boxed = match try_extract_generic(field.ty.clone()) {
+
+    let mut field_type = FieldType::Simple;
+
+    // Check if field is `Spanned<T>`
+    if is_spanned(&field.ty) {
+        field.ty = match try_extract_generic(field.ty) {
             Ok(ty) => ty,
             Err(_) => {
-                panic!("`Box<T>` type must be generic with single arg");
+                panic!("`Spanned<T>` type must be generic with single arg");
             }
         };
-        if is_cst(&boxed) {
-            let mut ast = map_cst(boxed);
-            remove_generics(&mut ast);
-            replace_type(&mut field.ty, ast);
-        }
+        field_type = FieldType::Spanned;
     }
-    field
+
+    // Check if field is `Box<T>` if not it can't be CST since CSTs are self-referential
+    // and require `Box` or other reference types.
+    if !is_boxed(&field.ty) {
+        return (field_type, field);
+    }
+
+    // Extract generic argument from `Box<T>`
+    let boxed = match try_extract_generic(field.ty.clone()) {
+        Ok(ty) => ty,
+        Err(_) => {
+            panic!("`Box<T>` type must be generic with single arg");
+        }
+    };
+
+    // if boxed type isn't CST don't replace it
+    if !is_cst(&boxed) {
+        return (field_type, field);
+    }
+
+    let mut ast = map_cst(boxed);
+    remove_generics(&mut ast);
+    replace_type(&mut field.ty, ast);
+
+    match field_type {
+        FieldType::Simple => (FieldType::CST, field),
+        FieldType::Spanned => (FieldType::SpannedCST, field),
+        FieldType::Space | FieldType::CST | FieldType::SpannedCST => unreachable!(),
+    }
 }
 
 fn try_extract_generic(ty: Type) -> Result<Type, ()> {
@@ -128,15 +154,13 @@ fn try_extract_single_generic_arg(args: AngleBracketedGenericArguments) -> Resul
     }
 }
 
-// Return vector of fields that are not `#[space]`
-fn process_struct_fields<T>(fields: T) -> Vec<Field>
-where
-    T: Iterator<Item = Field>,
-{
-    fields
-        .filter(|field| !is_space(field))
-        .map(map_field)
-        .collect()
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum FieldType {
+    CST,
+    Space,
+    Simple,
+    Spanned,
+    SpannedCST,
 }
 
 fn remove_generics(ty: &mut Type) {
@@ -149,24 +173,192 @@ fn remove_generics(ty: &mut Type) {
     }
 }
 
+fn impl_block(from: &Ident, into: &Ident, generics: Generics, body: TokenStream) -> TokenStream {
+    quote! {
+        impl #generics From<#from #generics> for #into {
+            fn from(cst: #from #generics) -> Self {
+                #body
+            }
+        }
+    }
+}
+
+fn impl_named_struct(
+    from: &Ident,
+    into: &Ident,
+    generics: Generics,
+    fields: StructFields,
+) -> TokenStream {
+    let mut assign_vars = TokenStream::new();
+    let mut assign_fields = TokenStream::new();
+    for (field_type, field) in fields.into_iter() {
+        let ident = field.ident.as_ref().unwrap();
+        let field_assignment = match field_type {
+            FieldType::CST => {
+                let ty = try_extract_generic(field.ty.clone()).unwrap();
+                assign_vars.extend(quote! {
+                    let #ident: #ty = (*cst.#ident).into();
+                });
+                quote! {
+                    #ident: std::boxed::Box::from(#ident),
+                }
+            }
+            FieldType::Space => continue,
+            FieldType::Simple => quote! {
+                #ident: cst.#ident,
+            },
+            FieldType::Spanned => quote! {
+                #ident: cst.#ident.ast.into(),
+            },
+            FieldType::SpannedCST => {
+                let ty = try_extract_generic(field.ty.clone()).unwrap();
+                assign_vars.extend(quote! {
+                    let #ident: #ty = (*cst.#ident.ast).into();
+                });
+                quote! {
+                    #ident: std::boxed::Box::from(#ident),
+                }
+            }
+        };
+        assign_fields.extend(field_assignment);
+    }
+    let body = quote! {
+        #assign_vars
+        #into {
+            #assign_fields
+        }
+    };
+    impl_block(from, into, generics, body)
+}
+
+fn impl_tuple_struct(
+    from: &Ident,
+    into: &Ident,
+    generics: Generics,
+    fields: StructFields,
+) -> TokenStream {
+    let mut assign_vars = TokenStream::new();
+    let mut assign_fields = Vec::new();
+    for (i, (field_type, field)) in fields.into_iter().enumerate() {
+        let idx = Index::from(i);
+        match field_type {
+            FieldType::CST => {
+                let ident = Ident::new(&format!("var{i}"), Span::call_site());
+                let ty = try_extract_generic(field.ty.clone()).unwrap();
+                assign_vars.extend(quote! {
+                    let ident: #ty = (*cst.#idx).into();
+                });
+                assign_fields.push(quote! {
+                    #ident
+                });
+            }
+            FieldType::Space => continue,
+            FieldType::Simple => {
+                assign_fields.push(quote! {
+                    cst.#idx
+                });
+            }
+            FieldType::Spanned => {
+                assign_fields.push(quote! {
+                    cst.#idx.ast
+                });
+            }
+            FieldType::SpannedCST => {
+                let ident = Ident::new(&format!("var{i}"), Span::call_site());
+
+                let ty = try_extract_generic(field.ty.clone()).unwrap();
+                assign_vars.extend(quote! {
+                    let ident: #ty = (*cst.#idx.ast).into();
+                });
+                assign_fields.push(quote! {
+                    #ident
+                });
+            }
+        };
+    }
+
+    let body = quote! {
+        #assign_vars
+        #into(#(#assign_fields),*)
+    };
+    impl_block(from, into, generics, body)
+}
+
+fn impl_enum(from: &Ident, into: &Ident, generics: Generics) -> TokenStream {
+    let body = quote! {todo!()};
+    impl_block(from, into, generics, body)
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum StructType {
+    Named,
+    Tuple,
+}
+
+struct StructFields {
+    pub fields: Vec<(FieldType, Field)>,
+    pub ty: StructType,
+}
+
+impl IntoIterator for StructFields {
+    type Item = (FieldType, Field);
+    type IntoIter = std::vec::IntoIter<(FieldType, Field)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.fields.into_iter()
+    }
+}
+
+impl From<FieldsNamed> for StructFields {
+    fn from(fields: FieldsNamed) -> Self {
+        let fields = fields.named.into_iter().map(map_field).collect::<Vec<_>>();
+        let ty = StructType::Named;
+        Self { fields, ty }
+    }
+}
+
+impl From<FieldsUnnamed> for StructFields {
+    fn from(fields: FieldsUnnamed) -> Self {
+        let fields = fields
+            .unnamed
+            .into_iter()
+            .map(map_field)
+            .collect::<Vec<_>>();
+        let ty = StructType::Tuple;
+        Self { fields, ty }
+    }
+}
+
 pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
     let ItemStruct {
         attrs,
         vis,
         struct_token,
         ident,
-        generics: _,
+        generics,
         fields,
         semi_token,
     } = s;
     let ast_ident = get_ast_ident(&ident);
 
-    let fields = match fields {
-        Fields::Named(named) => named.named.into_iter(),
-        Fields::Unnamed(unnamed) => unnamed.unnamed.into_iter(),
+    let struct_fields: StructFields = match fields {
+        Fields::Named(named) => named.into(),
+        Fields::Unnamed(unnamed) => unnamed.into(),
         Fields::Unit => panic!("Only named fields are supported"),
     };
-    let fields = process_struct_fields(fields);
+
+    let fields = struct_fields
+        .fields
+        .iter()
+        .filter(|(ty, _)| *ty != FieldType::Space)
+        .cloned()
+        .map(|(_ty, field)| field)
+        .collect::<Vec<_>>();
+
+    let trait_impl = match struct_fields.ty {
+        StructType::Named => impl_named_struct(&ident, &ast_ident, generics, struct_fields),
+        StructType::Tuple => impl_tuple_struct(&ident, &ast_ident, generics, struct_fields),
+    };
 
     let fields = if semi_token.is_some() {
         quote! {(#(#fields),*);}
@@ -177,6 +369,8 @@ pub(super) fn struct_ast(s: ItemStruct) -> TokenStream {
         #(#attrs)*
         #vis #struct_token #ast_ident
         #fields
+
+        #trait_impl
     }
 }
 
@@ -272,16 +466,19 @@ pub(super) fn enum_ast(e: ItemEnum) -> TokenStream {
         vis,
         enum_token,
         ident,
-        generics: _,
+        generics,
         brace_token: _,
         variants,
     } = e;
     let ast_ident = get_ast_ident(&ident);
     let variants = process_variants(variants.into_iter());
+    let trait_impl = impl_enum(&ident, &ast_ident, generics);
     quote! {
         #(#attrs)*
         #vis #enum_token #ast_ident {
             #variants
         }
+
+        #trait_impl
     }
 }
