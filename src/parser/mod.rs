@@ -14,11 +14,11 @@ pub use self::{input::Input, spanned::Spanned};
 
 pub mod expression;
 pub mod identifier;
-pub mod input;
+mod input;
 pub mod keyword;
 pub mod literal;
 pub mod operator;
-pub mod spanned;
+mod spanned;
 
 #[derive(Parser)]
 #[grammar = "parser/alloy.pest"]
