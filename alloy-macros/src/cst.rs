@@ -284,8 +284,34 @@ fn impl_tuple_struct(
     impl_block(from, into, generics, body)
 }
 
-fn impl_enum(from: &Ident, into: &Ident, generics: Generics) -> TokenStream {
-    let body = quote! {todo!()};
+fn impl_enum<T>(from: &Ident, into: &Ident, generics: Generics, variants: T) -> TokenStream
+where
+    T: Iterator<Item = Variant>,
+{
+    let variants = variants
+        .map(|v| {
+            let ident = v.ident;
+            let field = extract_enum_field(v.fields);
+            if is_spanned(&field.ty) {
+                quote! {
+                    #from::#ident(cst) => {
+                        Self::#ident(cst.ast)
+                    }
+                }
+            } else {
+                quote! {
+                    #from::#ident(cst) => {
+                        Self::#ident(cst.into())
+                    }
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    let body = quote! {
+        match cst {
+            #(#variants)*
+        }
+    };
     impl_block(from, into, generics, body)
 }
 
@@ -408,26 +434,37 @@ fn map_cst(mut ty: Type) -> Type {
     }
 }
 
-fn process_enum_fields<T>(fields: T) -> Vec<Field>
-where
-    T: Iterator<Item = Field>,
-{
+fn process_enum_field(mut field: Field) -> Field {
     // Remove `CST` suffix from each field's type identifier
-    fields
-        .map(|mut f| {
-            if is_cst(&f.ty) {
-                f.ty = map_cst(f.ty);
-            } else if is_spanned(&f.ty) {
-                f.ty = if let Ok(ty) = try_extract_generic(f.ty) {
-                    ty
-                } else {
-                    panic!("`Spanned<T>` takes only a single type argument.")
-                }
-            }
-            remove_generics(&mut f.ty);
-            f
-        })
-        .collect()
+    if is_cst(&field.ty) {
+        field.ty = map_cst(field.ty);
+    } else if is_spanned(&field.ty) {
+        field.ty = if let Ok(ty) = try_extract_generic(field.ty) {
+            ty
+        } else {
+            panic!("`Spanned<T>` takes only a single type argument.")
+        }
+    }
+    remove_generics(&mut field.ty);
+    field
+}
+
+fn extract_enum_field(fields: Fields) -> Field {
+    // enums variant's fields are always a single unnamed field
+    if let Fields::Unnamed(unnamed) = fields {
+        let mut iter = unnamed.unnamed.into_iter();
+        let field = iter.next().unwrap();
+        if iter.next().is_some() {
+            panic!("Only one unnamed field is supported in an enum variant")
+        }
+        field
+    } else {
+        panic!("Enum CSTs can only have a single unnamed field")
+    }
+}
+
+fn map_enum_variant_field(fields: Fields) -> Field {
+    process_enum_field(extract_enum_field(fields))
 }
 
 fn process_variants<T>(variants: T) -> TokenStream
@@ -444,17 +481,10 @@ where
         } = variant;
         assert!(discriminant.is_none());
 
-        let fields = match fields {
-            Fields::Named(_) => panic!("named fields in enums are not supported"),
-            Fields::Unnamed(unnamed) => {
-                let fields = process_enum_fields(unnamed.unnamed.into_iter());
-                quote! {(#(#fields),*)}
-            }
-            Fields::Unit => quote! {},
-        };
+        let field = map_enum_variant_field(fields);
         stream.extend(quote! {
             #(#attrs)*
-            #ident #fields,
+            #ident(#field),
         });
     }
     stream
@@ -471,8 +501,8 @@ pub(super) fn enum_ast(e: ItemEnum) -> TokenStream {
         variants,
     } = e;
     let ast_ident = get_ast_ident(&ident);
+    let trait_impl = impl_enum(&ident, &ast_ident, generics, variants.iter().cloned());
     let variants = process_variants(variants.into_iter());
-    let trait_impl = impl_enum(&ident, &ast_ident, generics);
     quote! {
         #(#attrs)*
         #vis #enum_token #ast_ident {
